@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RESONANCE TRACER</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a0a;
+    color: #ff8c00;
+    font-family: 'Press Start 2P', monospace;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+  }
+  .screen.active { display: flex; }
+
+  /* SCREEN 1 */
+  #boot-lines { display: flex; flex-direction: column; gap: 20px; margin-bottom: 40px; }
+  .boot-line { font-size: clamp(10px, 3.5vw, 16px); opacity: 0; transition: opacity 0.3s; }
+  .boot-line.visible { opacity: 1; }
+  #boot-title { font-size: clamp(12px, 4vw, 20px); }
+
+  .btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(9px, 3vw, 13px);
+    color: #0a0a0a;
+    background: #ff8c00;
+    border: none;
+    padding: 16px 24px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    display: none;
+    margin-top: 20px;
+  }
+  .btn:active { opacity: 0.7; }
+  .btn.visible { display: inline-block; }
+  .btn-round {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(8px, 2.5vw, 11px);
+    color: #0a0a0a;
+    background: #ff8c00;
+    border: none;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    cursor: pointer;
+    letter-spacing: 1px;
+    margin-top: 24px;
+    line-height: 1.4;
+    padding: 10px;
+  }
+  .btn-round:active { opacity: 0.7; }
+
+  #error-msg {
+    font-size: clamp(8px, 2.5vw, 11px);
+    color: #ff4444;
+    line-height: 2;
+    display: none;
+    margin-bottom: 20px;
+  }
+
+  /* SCREEN 2 */
+  #tracking-screen { justify-content: space-between; padding: 40px 24px 32px; }
+  #arrow-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+  }
+  #arrow-svg {
+    width: min(55vw, 260px);
+    height: min(55vw, 260px);
+    transition: transform 0.3s ease-out;
+  }
+  #zone-label {
+    font-size: clamp(14px, 5vw, 22px);
+    letter-spacing: 4px;
+  }
+  #status-line {
+    font-size: clamp(7px, 2.2vw, 10px);
+    color: #888;
+    letter-spacing: 1px;
+    min-height: 20px;
+  }
+  #signal-warn {
+    font-size: clamp(7px, 2.2vw, 10px);
+    color: #ff4444;
+    letter-spacing: 1px;
+    min-height: 20px;
+    display: none;
+  }
+  #retune-msg {
+    font-size: clamp(8px, 2.5vw, 11px);
+    color: #ff8c00;
+    display: none;
+    min-height: 20px;
+  }
+
+  /* ARRIVAL OVERLAY */
+  #arrival-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #0a0a0a;
+    color: #44ff88;
+    font-size: clamp(14px, 5vw, 24px);
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 3px;
+    z-index: 999;
+  }
+  #arrival-overlay.active { display: flex; }
+</style>
+</head>
+<body>
+
+<!-- SCREEN 1: BOOT -->
+<div id="screen-boot" class="screen active">
+  <div id="boot-lines">
+    <div class="boot-line" id="bl1" style="font-size: clamp(12px,4vw,20px)">RESONANCE TRACER</div>
+    <div class="boot-line" id="bl2">v1.0</div>
+    <div class="boot-line" id="bl3">INITIALIZING...</div>
+  </div>
+  <div id="error-msg" id="error-msg"></div>
+  <button class="btn" id="activate-btn" onclick="requestPermissions()">ACTIVATE TRACER</button>
+  <button class="btn" id="retry-btn" onclick="requestPermissions()" style="display:none;margin-top:12px;">RETRY</button>
+</div>
+
+<!-- SCREEN 2: TRACKING -->
+<div id="screen-tracking" class="screen" id="tracking-screen">
+  <div id="arrow-container">
+    <svg id="arrow-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <polygon id="arrow-poly" points="50,5 80,75 50,58 20,75" fill="#4488ff"/>
+    </svg>
+    <div id="zone-label">COLD</div>
+    <div id="status-line">MOVE TO CALIBRATE</div>
+    <div id="signal-warn"></div>
+    <div id="retune-msg">RETUNING...</div>
+  </div>
+  <button class="btn-round" id="dial-btn" onclick="retune()">RESONANCE DIAL</button>
+</div>
+
+<!-- ARRIVAL OVERLAY -->
+<div id="arrival-overlay">RESONANCE LOCKED</div>
+
+<script>
+const TARGET_LAT = 47.751750;
+const TARGET_LNG = -122.158972;
+const ARRIVAL_RADIUS = 20;
+const NEXT_URL = "https://vincentkovar.github.io/Through-the-Keyhole/stone-plus.html";
+
+let watchId = null;
+let compassHeading = null;
+let compassReadings = [];
+let consecutiveArrivals = 0;
+let arrived = false;
+let orientationListenerAdded = false;
+
+// --- BOOT SEQUENCE ---
+function bootSequence() {
+  const lines = ['bl1','bl2','bl3'];
+  lines.forEach((id, i) => {
+    setTimeout(() => document.getElementById(id).classList.add('visible'), i * 300);
+  });
+  setTimeout(() => {
+    document.getElementById('activate-btn').classList.add('visible');
+  }, 1200);
+}
+bootSequence();
+
+// --- PERMISSIONS ---
+async function requestPermissions() {
+  hideError();
+  document.getElementById('activate-btn').classList.remove('visible');
+  document.getElementById('retry-btn').style.display = 'none';
+
+  // 1. Geolocation
+  if (!navigator.geolocation) {
+    showError('GEOLOCATION NOT SUPPORTED BY THIS BROWSER');
+    return;
+  }
+
+  const geoGranted = await new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(
+      () => resolve(true),
+      () => resolve(false),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+
+  if (!geoGranted) {
+    showError('LOCATION ACCESS REQUIRED\n— check browser settings');
+    document.getElementById('retry-btn').style.display = 'inline-block';
+    return;
+  }
+
+  // 2. DeviceOrientation (iOS 13+)
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const result = await DeviceOrientationEvent.requestPermission();
+      // granted or denied — either way proceed
+    } catch(e) { /* skip */ }
+  }
+
+  goToTracking();
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.style.display = 'block';
+  el.innerHTML = msg.replace(/\n/g, '<br>');
+  document.getElementById('activate-btn').classList.remove('visible');
+}
+function hideError() {
+  document.getElementById('error-msg').style.display = 'none';
+}
+
+// --- SCREEN TRANSITION ---
+function goToTracking() {
+  document.getElementById('screen-boot').classList.remove('active');
+  document.getElementById('screen-tracking').classList.add('active');
+  startTracking();
+}
+
+// --- BEARING MATH ---
+function getBearing(lat1, lon1, lat2, lon2) {
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) -
+            Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  const θ = Math.atan2(y, x);
+  return (θ * 180 / Math.PI + 360) % 360;
+}
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// --- COMPASS STABILITY FILTER ---
+function addCompassReading(alpha) {
+  if (compassReadings.length === 0) {
+    compassReadings.push(alpha);
+    return alpha;
+  }
+  const avg = rollingAvg();
+  let diff = alpha - avg;
+  // Normalize diff to [-180, 180]
+  while (diff > 180) diff -= 360;
+  while (diff < -180) diff += 360;
+  if (Math.abs(diff) > 45) return null; // discard
+  compassReadings.push(alpha);
+  if (compassReadings.length > 5) compassReadings.shift();
+  return rollingAvg();
+}
+
+function rollingAvg() {
+  if (!compassReadings.length) return null;
+  // Circular mean
+  let sinSum = 0, cosSum = 0;
+  for (const r of compassReadings) {
+    sinSum += Math.sin(r * Math.PI / 180);
+    cosSum += Math.cos(r * Math.PI / 180);
+  }
+  return (Math.atan2(sinSum / compassReadings.length, cosSum / compassReadings.length) * 180 / Math.PI + 360) % 360;
+}
+
+// --- DEVICE ORIENTATION ---
+function handleOrientation(e) {
+  if (e.alpha === null) return;
+  const filtered = addCompassReading(e.alpha);
+  if (filtered !== null) {
+    compassHeading = filtered;
+    document.getElementById('status-line').textContent = 'SIGNAL LOCKED';
+  }
+}
+
+function addOrientationListener() {
+  if (!orientationListenerAdded) {
+    window.addEventListener('deviceorientation', handleOrientation, true);
+    orientationListenerAdded = true;
+  }
+}
+
+// --- GEO WATCH ---
+let lastPos = null;
+
+function startWatch() {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  watchId = navigator.geolocation.watchPosition(
+    onGeoSuccess,
+    onGeoError,
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+  );
+}
+
+function onGeoSuccess(pos) {
+  lastPos = pos;
+  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  const warnEl = document.getElementById('signal-warn');
+  const arrowSvg = document.getElementById('arrow-svg');
+
+  if (accuracy > 50) {
+    warnEl.style.display = 'block';
+    warnEl.textContent = 'SIGNAL DEGRADED — move to open area';
+    arrowSvg.style.opacity = '0.3';
+    consecutiveArrivals = 0;
+    return;
+  }
+  warnEl.style.display = 'none';
+  arrowSvg.style.opacity = '1';
+
+  const dist = getDistance(lat, lng, TARGET_LAT, TARGET_LNG);
+  updateArrow(lat, lng, dist);
+  checkArrival(dist);
+}
+
+function onGeoError(err) {
+  document.getElementById('signal-warn').style.display = 'block';
+  document.getElementById('signal-warn').textContent = 'SIGNAL LOST';
+  consecutiveArrivals = 0;
+}
+
+// --- UPDATE ARROW ---
+function updateArrow(lat, lng, dist) {
+  const bearing = getBearing(lat, lng, TARGET_LAT, TARGET_LNG);
+  const poly = document.getElementById('arrow-poly');
+  const zoneLabel = document.getElementById('zone-label');
+  const arrowSvg = document.getElementById('arrow-svg');
+
+  // Color & zone
+  let color, zone;
+  if (dist > 100) {
+    color = '#4488ff'; zone = 'COLD';
+  } else if (dist > 30) {
+    color = '#ffcc00'; zone = 'WARM';
+  } else {
+    color = '#44ff88'; zone = 'HOT';
+  }
+  poly.setAttribute('fill', color);
+  zoneLabel.textContent = zone;
+  zoneLabel.style.color = color;
+
+  // Rotation: bearing - compassHeading
+  let rotation = bearing;
+  if (compassHeading !== null) {
+    rotation = (bearing - compassHeading + 360) % 360;
+  }
+  arrowSvg.style.transform = `rotate(${rotation}deg)`;
+}
+
+// --- ARRIVAL ---
+function checkArrival(dist) {
+  if (arrived) return;
+  if (dist <= ARRIVAL_RADIUS) {
+    consecutiveArrivals++;
+    if (consecutiveArrivals >= 3) {
+      triggerArrival();
+    }
+  } else {
+    consecutiveArrivals = 0;
+  }
+}
+
+function triggerArrival() {
+  arrived = true;
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  const overlay = document.getElementById('arrival-overlay');
+  overlay.classList.add('active');
+  setTimeout(() => { window.location.href = NEXT_URL; }, 1500);
+}
+
+// --- RETUNE ---
+function retune() {
+  compassReadings = [];
+  compassHeading = null;
+  document.getElementById('status-line').textContent = 'MOVE TO CALIBRATE';
+  const msg = document.getElementById('retune-msg');
+  msg.style.display = 'block';
+  startWatch();
+  addOrientationListener();
+  setTimeout(() => { msg.style.display = 'none'; }, 1000);
+}
+
+// --- START TRACKING ---
+function startTracking() {
+  addOrientationListener();
+  startWatch();
+}
+</script>
+</body>
+</html>
