@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>RESONANCE DETECTOR</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0a;color:#ff8c00;font-family:'Press Start 2P',monospace;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+#app{display:flex;flex-direction:column;height:100%;padding:env(safe-area-inset-top,24px) 20px env(safe-area-inset-bottom,24px)}
+#header{display:flex;flex-direction:column;gap:12px;padding-top:8px}
+.hline{font-size:clamp(8px,2.8vw,13px);opacity:0;transition:opacity 0.5s;letter-spacing:2px;line-height:1.8}
+.hline.v{opacity:1}
+#hl1{font-size:clamp(12px,4vw,18px);color:#ff8c00}
+#hl2{color:#aa5500}
+#hl3{color:#aa5500}
+#middle{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+#static-ring{position:absolute;width:min(60vw,260px);height:min(60vw,260px);border-radius:50%;border:1px solid rgba(255,140,0,0.12);pointer-events:none;transition:border-color 0.5s}
+#static-ring.pulsing{border-color:rgba(255,140,0,0.35)}
+#signal{display:flex;flex-direction:column;align-items:center;gap:16px;opacity:0;transition:opacity 0.6s}
+#sig-label{font-size:clamp(7px,2.2vw,9px);color:#cc6600;letter-spacing:3px}
+#sig-cardinal{font-size:clamp(28px,10vw,52px);color:#ff8c00;letter-spacing:6px;min-height:60px;text-align:center}
+#sig-distance{font-size:clamp(9px,3vw,14px);color:#cc7700;letter-spacing:3px;min-height:24px;text-align:center}
+#status-line{font-size:clamp(6px,1.8vw,8px);color:#443300;letter-spacing:2px;margin-top:12px;min-height:14px;text-align:center}
+#dial-zone{display:flex;flex-direction:column;align-items:center;gap:10px;padding-bottom:8px}
+#dial-label{font-size:clamp(6px,2vw,9px);letter-spacing:2px;color:#ff8c00;opacity:1;transition:opacity 0.8s,color 0.8s;min-height:16px}
+#dial-label.dim{color:#333;opacity:0.5}
+#dial-label.error{color:#ff4444;opacity:1}
+#dial-wrap{position:relative;width:min(80vw,320px);height:56px;overflow:hidden;cursor:grab;user-select:none}
+#dial-wrap:active{cursor:grabbing}
+.dial-seg{width:40px;height:48px;border:1px solid rgba(255,140,0,0.25);display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,140,0,0.4);flex-shrink:0;background:rgba(255,140,0,0.03);transition:border-color 0.5s,color 0.5s,background 0.5s}
+.dial-seg.active-seg{border-color:rgba(255,140,0,0.8);color:#ff8c00;background:rgba(255,140,0,0.1)}
+#dial-wrap.amber .dial-seg{border-color:rgba(255,140,0,0.5);color:rgba(255,140,0,0.7)}
+#dial-wrap.amber .dial-seg.active-seg{border-color:#ff8c00;color:#ff8c00;background:rgba(255,140,0,0.2)}
+#dial-wrap.grey .dial-seg{border-color:rgba(80,80,80,0.3);color:rgba(80,80,80,0.4);background:transparent}
+#dial-wrap.grey .dial-seg.active-seg{border-color:rgba(80,80,80,0.5);color:rgba(80,80,80,0.5);background:transparent}
+#dial-wrap::before,#dial-wrap::after{content:'';position:absolute;top:0;width:40px;height:100%;z-index:2;pointer-events:none}
+#dial-wrap::before{left:0;background:linear-gradient(to right,#0a0a0a,transparent)}
+#dial-wrap::after{right:0;background:linear-gradient(to left,#0a0a0a,transparent)}
+#dial-center{position:absolute;left:50%;top:0;width:42px;height:100%;transform:translateX(-50%);border-top:1px solid rgba(255,140,0,0.6);border-bottom:1px solid rgba(255,140,0,0.6);z-index:1;pointer-events:none;transition:border-color 0.5s}
+#dial-wrap.grey #dial-center{border-color:rgba(80,80,80,0.3)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div class="hline" id="hl1">RESONANCE DETECTOR</div>
+    <div class="hline" id="hl2">v3.0</div>
+    <div class="hline" id="hl3">INITIALIZING...</div>
+    <div class="hline" id="hl4" style="color:#cc6600;font-size:clamp(11px,3.5vw,16px);line-height:2.0;text-align:center">"Begin at the beginning...</div>
+    <div class="hline" id="hl5" style="color:#cc6600;font-size:clamp(11px,3.5vw,16px);line-height:2.0;text-align:center">and go on till you come to the end.</div>
+    <div class="hline" id="hl6" style="color:#cc6600;font-size:clamp(11px,3.5vw,16px);line-height:2.0;text-align:center">Then stop."</div>
+  </div>
+  <div id="middle">
+    <div id="static-ring"></div>
+    <div id="signal">
+      <div id="sig-label">DESTINATION IS</div>
+      <div id="sig-cardinal">---</div>
+      <div id="sig-distance">ACQUIRING</div>
+    </div>
+    <div id="status-line"></div>
+  </div>
+  <div id="dial-zone">
+    <div id="dial-label">TUNE TO ACTIVATE</div>
+    <div id="dial-wrap" class="amber">
+      <div id="dial-center"></div>
+    </div>
+  </div>
+</div>
+<audio id="audio-unlock" src="https://vincentkovar.github.io/Through-the-Keyhole/LST.mp3" preload="auto"></audio>
+
+<script>
+const TARGET_LAT = 47.751750;
+const TARGET_LNG = -122.158972;
+const HANDOFF_METERS = 229;
+const DEVICE2_URL = "https://vincentkovar.github.io/Through-the-Keyhole/stone-plus.html";
+const UPDATE_INTERVAL = 12000;
+const IS_ANDROID = /android/i.test(navigator.userAgent);
+
+let activated = false;
+let watchId = null;
+let lastPos = null;
+let pulseTimer = null;
+let audioCtx = null;
+let arrived = false;
+
+// --- BOOT ---
+['hl1','hl2','hl3','hl4','hl5','hl6'].forEach((id,i) => {
+  setTimeout(() => document.getElementById(id).classList.add('v'), 400 + i*500);
+});
+
+// --- DIAL ---
+const SEGS = 24;
+const SEG_W = 40;
+const dialWrap = document.getElementById('dial-wrap');
+const symbols = ['◈','⊕','◉','⊗','◎','⊘','◌','⊙'];
+
+const track = document.createElement('div');
+track.style.cssText = 'position:absolute;top:0;left:0;height:100%;display:flex;align-items:center;will-change:transform';
+dialWrap.appendChild(track);
+
+for (let rep = 0; rep < 3; rep++) {
+  for (let i = 0; i < SEGS; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'dial-seg';
+    if (i === Math.floor(SEGS/2) && rep === 1) seg.classList.add('active-seg');
+    seg.textContent = symbols[i % symbols.length];
+    track.appendChild(seg);
+  }
+}
+
+const totalW = SEGS * SEG_W;
+let dialOffset = -totalW;
+track.style.transform = `translateX(${dialOffset}px)`;
+
+let dragStart = null, dragBase = null, totalDrag = 0;
+const ACTIVATE_DRAG = 60;
+
+function updateActiveSegs() {
+  const wr = dialWrap.getBoundingClientRect();
+  const cx = wr.width / 2;
+  track.querySelectorAll('.dial-seg').forEach(s => {
+    const r = s.getBoundingClientRect();
+    const sc = r.left - wr.left + r.width/2;
+    s.classList.toggle('active-seg', Math.abs(sc - cx) < SEG_W/2);
+  });
+}
+
+function onDragStart(e) {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(err) {}
+  }
+  if (IS_ANDROID) {
+    try {
+      const el = document.getElementById('audio-unlock');
+      el.volume = 0;
+      el.play().catch(()=>{});
+    } catch(err) {}
+  }
+  if (activated) return;
+  dragStart = e.touches ? e.touches[0].clientX : e.clientX;
+  dragBase = dialOffset;
+}
+
+function onDragMove(e) {
+  if (dragStart === null || activated) return;
+  e.preventDefault();
+  const x = e.touches ? e.touches[0].clientX : e.clientX;
+  const dx = x - dragStart;
+  totalDrag += Math.abs(dx);
+  dialOffset = dragBase + dx;
+  if (dialOffset > -totalW/2) dialOffset -= totalW;
+  if (dialOffset < -totalW * 1.5) dialOffset += totalW;
+  track.style.transform = `translateX(${dialOffset}px)`;
+  updateActiveSegs();
+  if (totalDrag > ACTIVATE_DRAG && !activated) triggerActivation();
+}
+
+function onDragEnd() { dragStart = null; }
+
+dialWrap.addEventListener('touchstart', onDragStart, {passive:true});
+dialWrap.addEventListener('touchmove', onDragMove, {passive:false});
+dialWrap.addEventListener('touchend', onDragEnd);
+dialWrap.addEventListener('mousedown', onDragStart);
+window.addEventListener('mousemove', onDragMove);
+window.addEventListener('mouseup', onDragEnd);
+
+// --- ACTIVATION ---
+async function triggerActivation() {
+  activated = true;
+  document.getElementById('dial-label').textContent = 'CALIBRATING...';
+
+  if (!navigator.geolocation) {
+    showDialError('SIGNAL UNAVAILABLE');
+    return;
+  }
+
+  const ok = await new Promise(res => {
+    navigator.geolocation.getCurrentPosition(
+      () => res(true), () => res(false),
+      {enableHighAccuracy:true, timeout:12000}
+    );
+  });
+
+  if (!ok) {
+    showDialError('LOCATION REQUIRED — CHECK SETTINGS');
+    activated = false;
+    return;
+  }
+
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try { await DeviceOrientationEvent.requestPermission(); } catch(e) {}
+  }
+
+  dialSuccess();
+  startTracking();
+}
+
+function dialSuccess() {
+  dialWrap.classList.remove('amber');
+  dialWrap.classList.add('grey');
+  document.getElementById('dial-label').classList.add('dim');
+  document.getElementById('hl3').textContent = 'DETECTING...';
+  document.getElementById('dial-label').textContent = 'SIGNAL TUNED';
+  setTimeout(() => { document.getElementById('dial-label').textContent = ''; }, 2000);
+  if (audioCtx) audioCtx.resume();
+}
+
+function showDialError(msg) {
+  activated = false;
+  dialWrap.classList.add('amber');
+  dialWrap.classList.remove('grey');
+  const lbl = document.getElementById('dial-label');
+  lbl.classList.remove('dim');
+  lbl.classList.add('error');
+  lbl.textContent = msg;
+  setTimeout(() => {
+    lbl.classList.remove('error');
+    lbl.textContent = 'RECALIBRATE — TUNE DIAL';
+  }, 3000);
+}
+
+function showRecalibrate() {
+  dialWrap.classList.add('amber');
+  dialWrap.classList.remove('grey');
+  activated = false;
+  const lbl = document.getElementById('dial-label');
+  lbl.classList.remove('dim');
+  lbl.textContent = 'RECALIBRATE — TUNE DIAL';
+}
+
+// --- TRACKING ---
+function startTracking() {
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(onGeo, onGeoErr,
+    {enableHighAccuracy:true, maximumAge:0, timeout:15000});
+  schedulePulse();
+}
+
+function onGeo(pos) {
+  lastPos = pos;
+  document.getElementById('status-line').textContent = '';
+}
+
+function onGeoErr() {
+  document.getElementById('status-line').textContent = 'SIGNAL DEGRADED — MOVE TO OPEN AREA';
+  showRecalibrate();
+}
+
+// --- PULSE ---
+function schedulePulse() {
+  if (pulseTimer) clearInterval(pulseTimer);
+  doPulse();
+  pulseTimer = setInterval(doPulse, UPDATE_INTERVAL);
+}
+
+function doPulse() {
+  if (!lastPos) {
+    pulseSignal('---', 'ACQUIRING SIGNAL');
+    return;
+  }
+  const {latitude:lat, longitude:lng} = lastPos.coords;
+  const dist = getDist(lat, lng, TARGET_LAT, TARGET_LNG);
+  const bearing = getBearing(lat, lng, TARGET_LAT, TARGET_LNG);
+  pulseSignal(bearingToCardinal(bearing), formatDist(dist));
+  playHum();
+  if (dist <= HANDOFF_METERS && !arrived) {
+    arrived = true;
+    setTimeout(() => { window.location.href = DEVICE2_URL; }, 2000);
+  }
+}
+
+function pulseSignal(cardinal, distStr) {
+  const sig = document.getElementById('signal');
+  const ring = document.getElementById('static-ring');
+  document.getElementById('sig-cardinal').textContent = cardinal;
+  document.getElementById('sig-distance').textContent = distStr;
+  sig.style.transition = 'opacity 0.5s';
+  sig.style.opacity = '1';
+  ring.classList.add('pulsing');
+  setTimeout(() => {
+    sig.style.transition = 'opacity 2.5s';
+    sig.style.opacity = '0.15';
+    ring.classList.remove('pulsing');
+  }, 4000);
+}
+
+// --- AUDIO ---
+function playHum() {
+  if (IS_ANDROID) {
+    try {
+      const el = document.getElementById('audio-unlock');
+      el.currentTime = 0;
+      el.volume = 0.4;
+      el.play().catch(()=>{});
+    } catch(e) {}
+  } else {
+    try {
+      if (!audioCtx) return;
+      audioCtx.resume();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(55, now);
+      osc.frequency.linearRampToValueAtTime(80, now + 0.8);
+      osc.frequency.linearRampToValueAtTime(55, now + 2.2);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.6);
+      gain.gain.linearRampToValueAtTime(0.22, now + 1.1);
+      gain.gain.linearRampToValueAtTime(0, now + 3.8);
+      osc.start(now);
+      osc.stop(now + 4.0);
+    } catch(e) {}
+  }
+}
+
+// --- MATH ---
+function getBearing(la1,lo1,la2,lo2) {
+  const f1=la1*Math.PI/180, f2=la2*Math.PI/180;
+  const dl=(lo2-lo1)*Math.PI/180;
+  const y=Math.sin(dl)*Math.cos(f2);
+  const x=Math.cos(f1)*Math.sin(f2)-Math.sin(f1)*Math.cos(f2)*Math.cos(dl);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+
+function getDist(la1,lo1,la2,lo2) {
+  const R=6371000;
+  const f1=la1*Math.PI/180, f2=la2*Math.PI/180;
+  const df=(la2-la1)*Math.PI/180, dl=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(df/2)**2+Math.cos(f1)*Math.cos(f2)*Math.sin(dl/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function bearingToCardinal(b) {
+  const d=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return d[Math.round(b/22.5)%16];
+}
+
+function formatDist(m) {
+  const LEAGUE=4828.03, FURLONG=201.168, ROD=5.0292;
+  if (m >= LEAGUE * 0.8) return `${(m/LEAGUE).toFixed(1)} LEAGUES`;
+  if (m >= FURLONG * 2) return `${Math.round(m/FURLONG)} FURLONGS`;
+  return `${Math.round(m/ROD)} RODS`;
+}
+</script>
+</body>
+</html>
