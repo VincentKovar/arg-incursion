@@ -253,8 +253,9 @@ function dialSuccess() {
   setTimeout(() => {
     document.getElementById('dial-label').textContent = '';
   }, 2000);
+    if (audioCtx) audioCtx.resume();
 }
-  if (audioCtx) audioCtx.resume();
+
 
 function showDialError(msg) {
   activated = false;
