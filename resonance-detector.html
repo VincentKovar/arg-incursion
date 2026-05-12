@@ -353,6 +353,7 @@ function pulseSignal(cardinal, distStr) {
 function playHum() {
   if (!audioCtx) return;
   try {
+    audioCtx.resume();
     const now = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
