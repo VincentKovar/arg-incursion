@@ -183,8 +183,15 @@ function onDragStart(e) {
   if (!audioCtx) {
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch(e) {}
+      const el = document.getElementById('audio-unlock');
+      el.volume = 0;
+      el.play().catch(()=>{});
+    } catch(err) {}
   }
+  if (activated) return;
+  dragStart = e.touches ? e.touches[0].clientX : e.clientX;
+  dragBase = dialOffset;
+}
 
 function onDragMove(e) {
   if (dragStart === null || activated) return;
