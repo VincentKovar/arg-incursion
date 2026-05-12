@@ -358,10 +358,24 @@ function pulseSignal(cardinal, distStr) {
 // --- AUDIO ---
 function playHum() {
   try {
-    const el = document.getElementById('audio-unlock');
-    el.volume = 0.4;
-    el.currentTime = 0;
-    el.play().catch(()=>{});
+    if (audioCtx) {
+      audioCtx.resume();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(55, now);
+      osc.frequency.linearRampToValueAtTime(80, now + 0.8);
+      osc.frequency.linearRampToValueAtTime(55, now + 2.2);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.6);
+      gain.gain.linearRampToValueAtTime(0.22, now + 1.1);
+      gain.gain.linearRampToValueAtTime(0, now + 3.8);
+      osc.start(now);
+      osc.stop(now + 4.0);
+    }
   } catch(e) {}
 }
 
