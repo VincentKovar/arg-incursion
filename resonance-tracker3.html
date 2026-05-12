@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RESONANCE TRACER</title>
+<title>RESONANCE DETECTOR</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -31,7 +31,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0a;color:#ff8c0
 
 /* SIGNAL CONTENT */
 #signal{display:flex;flex-direction:column;align-items:center;gap:16px;opacity:0;transition:opacity 0.6s}
-#sig-label{font-size:clamp(7px,2.2vw,9px);color:#664400;letter-spacing:3px}
+#sig-label{font-size:clamp(7px,2.2vw,9px);color:#cc6600;letter-spacing:3px}
 #sig-cardinal{font-size:clamp(28px,10vw,52px);color:#ff8c00;letter-spacing:6px;min-height:60px;text-align:center}
 #sig-distance{font-size:clamp(9px,3vw,14px);color:#cc7700;letter-spacing:3px;min-height:24px;text-align:center}
 
@@ -248,11 +248,13 @@ function dialSuccess() {
   dialWrap.classList.remove('amber');
   dialWrap.classList.add('grey');
   document.getElementById('dial-label').classList.add('dim');
+  document.getElementById('hl3').textContent = 'DETECTING...';
   document.getElementById('dial-label').textContent = 'SIGNAL TUNED';
   setTimeout(() => {
     document.getElementById('dial-label').textContent = '';
   }, 2000);
 }
+  if (audioCtx) audioCtx.resume();
 
 function showDialError(msg) {
   activated = false;
@@ -338,12 +340,12 @@ function pulseSignal(cardinal, distStr) {
   sig.style.opacity = '1';
   ring.classList.add('pulsing');
 
-  // Hold 1.5s then fade
+  // Hold 2.5s then fade
   setTimeout(() => {
-    sig.style.transition = 'opacity 1.2s';
+    sig.style.transition = 'opacity 2.5s';
     sig.style.opacity = '0.15';
     ring.classList.remove('pulsing');
-  }, 1800);
+  }, 4000);
 }
 
 // --- AUDIO ---
@@ -362,7 +364,7 @@ function playHum() {
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(0.18, now + 0.6);
     gain.gain.linearRampToValueAtTime(0.22, now + 1.1);
-    gain.gain.linearRampToValueAtTime(0, now + 2.4);
+    gain.gain.linearRampToValueAtTime(0, now + 3.8);
     osc.start(now);
     osc.stop(now + 2.5);
   } catch(e) {}
