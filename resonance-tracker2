@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>RESONANCE TRACER</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent;touch-action:manipulation;font-family:'Press Start 2P',monospace}
+body{background:#0a0a0a;color:#ff8c00;transition:background 1.5s ease}
+.screen{display:none;position:fixed;inset:0;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.screen.active{display:flex}
+
+/* BOOT */
+#boot-lines{display:flex;flex-direction:column;gap:20px;margin-bottom:48px}
+.bl{font-size:clamp(9px,3vw,14px);opacity:0;transition:opacity 0.4s;line-height:1.8}
+.bl.v{opacity:1}
+#bl1{font-size:clamp(13px,4.5vw,20px);color:#ff8c00}
+.btn{font-family:'Press Start 2P',monospace;font-size:clamp(8px,2.8vw,12px);color:#0a0a0a;background:#ff8c00;border:none;padding:18px 28px;cursor:pointer;letter-spacing:1px;line-height:1.6}
+.btn:active{opacity:0.7}
+#error-box{font-size:clamp(7px,2.5vw,10px);color:#ff4444;line-height:2.2;display:none;margin-bottom:24px}
+
+/* TRACKING */
+#track-screen{justify-content:space-between;padding:env(safe-area-inset-top,32px) 20px env(safe-area-inset-bottom,24px)}
+
+/* Field canvas */
+#field-wrap{position:relative;flex:1;display:flex;align-items:center;justify-content:center;width:100%}
+#field-canvas{display:block;touch-action:none}
+
+/* HUD */
+#hud-top{width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:8px}
+#bearing-display{font-size:clamp(18px,7vw,32px);letter-spacing:6px;color:#ff8c00;min-height:40px}
+#zone-display{font-size:clamp(7px,2.5vw,11px);letter-spacing:3px;color:#888;min-height:18px}
+#status-display{font-size:clamp(6px,2vw,9px);color:#555;letter-spacing:2px;min-height:14px}
+
+#hud-bottom{width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;padding-bottom:8px}
+
+.round-btn{font-family:'Press Start 2P',monospace;font-size:clamp(7px,2.2vw,9px);color:#0a0a0a;background:#ff8c00;border:none;width:120px;height:120px;border-radius:50%;cursor:pointer;letter-spacing:1px;line-height:1.6;padding:12px}
+.round-btn:active{opacity:0.7}
+
+/* ARRIVAL */
+#arrival-overlay{display:none;position:fixed;inset:0;background:#0a0a0a;color:#44ff88;font-size:clamp(14px,5vw,24px);align-items:center;justify-content:center;letter-spacing:3px;z-index:999;flex-direction:column;gap:20px}
+#arrival-overlay.active{display:flex}
+</style>
+</head>
+<body>
+
+<!-- SCREEN 1: BOOT -->
+<div id="screen-boot" class="screen active">
+  <div id="boot-lines">
+    <div class="bl" id="bl1">RESONANCE TRACER</div>
+    <div class="bl" id="bl2">v2.0</div>
+    <div class="bl" id="bl3">INITIALIZING...</div>
+  </div>
+  <div id="error-box"></div>
+  <button class="btn" id="activate-btn" style="display:none" onclick="requestPerms()">ACTIVATE TRACER</button>
+  <button class="btn" id="retry-btn" style="display:none;margin-top:14px" onclick="requestPerms()">RETRY</button>
+</div>
+
+<!-- SCREEN 2: TRACKING -->
+<div id="screen-track" class="screen">
+  <div id="hud-top">
+    <div id="bearing-display">---</div>
+    <div id="zone-display">ACQUIRING SIGNAL</div>
+    <div id="status-display">MOVE TO CALIBRATE</div>
+  </div>
+  <div id="field-wrap">
+    <canvas id="field-canvas"></canvas>
+  </div>
+  <div id="hud-bottom">
+    <button class="round-btn" id="tune-btn" onclick="retune()">TUNE FOR<br>RESONANCE</button>
+  </div>
+</div>
+
+<!-- ARRIVAL -->
+<div id="arrival-overlay">
+  <div>RESONANCE LOCKED</div>
+  <div style="font-size:clamp(8px,2.5vw,11px);color:#44ff88;letter-spacing:2px">LOOK UP</div>
+</div>
+
+<script>
+const TARGET_LAT = 47.751750;
+const TARGET_LNG = -122.158972;
+const ARRIVAL_RADIUS = 35;
+const NEXT_URL = "https://vincentkovar.github.io/Through-the-Keyhole/stone-plus.html";
+const FAR_THRESHOLD = 400;
+const NEAR_THRESHOLD = 400;
+
+// State
+let watchId = null;
+let posHistory = [];
+let consecutiveArrivals = 0;
+let arrived = false;
+let gpsHeading = null;
+let magHeading = null;
+let magReadings = [];
+let currentDist = null;
+let currentBearing = null;
+let playerLat = null, playerLng = null;
+let animFrame = null;
+let pulsePhase = 0;
+let retuneMsg = false;
+let retuneMsgTimer = null;
+
+// Canvas
+let canvas, ctx, CW, CH;
+
+// --- BOOT ---
+function boot() {
+  ['bl1','bl2','bl3'].forEach((id,i) => {
+    setTimeout(() => document.getElementById(id).classList.add('v'), i * 320);
+  });
+  setTimeout(() => {
+    document.getElementById('activate-btn').style.display = 'inline-block';
+  }, 1400);
+}
+boot();
+
+// --- PERMISSIONS ---
+async function requestPerms() {
+  document.getElementById('error-box').style.display = 'none';
+  document.getElementById('activate-btn').style.display = 'none';
+  document.getElementById('retry-btn').style.display = 'none';
+
+  if (!navigator.geolocation) {
+    showError('GEOLOCATION NOT SUPPORTED');
+    return;
+  }
+
+  const ok = await new Promise(res => {
+    navigator.geolocation.getCurrentPosition(() => res(true), () => res(false), {enableHighAccuracy:true,timeout:12000});
+  });
+
+  if (!ok) {
+    showError('LOCATION ACCESS REQUIRED\n\ncheck browser settings');
+    document.getElementById('retry-btn').style.display = 'inline-block';
+    return;
+  }
+
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try { await DeviceOrientationEvent.requestPermission(); } catch(e) {}
+  }
+
+  goTrack();
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.innerHTML = msg.replace(/\n/g,'<br>');
+  el.style.display = 'block';
+}
+
+// --- TRANSITION ---
+function goTrack() {
+  document.getElementById('screen-boot').classList.remove('active');
+  document.getElementById('screen-track').classList.add('active');
+  initCanvas();
+  startOrientationListener();
+  startWatch();
+  requestAnimationFrame(drawLoop);
+}
+
+// --- CANVAS ---
+function initCanvas() {
+  canvas = document.getElementById('field-canvas');
+  const wrap = document.getElementById('field-wrap');
+  const sz = Math.min(wrap.clientWidth, wrap.clientHeight, 380);
+  canvas.width = sz;
+  canvas.height = sz;
+  CW = CH = sz;
+  ctx = canvas.getContext('2d');
+}
+
+// --- BEARING MATH ---
+function getBearing(la1,lo1,la2,lo2) {
+  const f1=la1*Math.PI/180, f2=la2*Math.PI/180;
+  const dl=(lo2-lo1)*Math.PI/180;
+  const y=Math.sin(dl)*Math.cos(f2);
+  const x=Math.cos(f1)*Math.sin(f2)-Math.sin(f1)*Math.cos(f2)*Math.cos(dl);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+
+function getDist(la1,lo1,la2,lo2) {
+  const R=6371000;
+  const f1=la1*Math.PI/180, f2=la2*Math.PI/180;
+  const df=(la2-la1)*Math.PI/180, dl=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(df/2)**2+Math.cos(f1)*Math.cos(f2)*Math.sin(dl/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function bearingToCardinal(b) {
+  const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(b/22.5)%16];
+}
+
+// --- MAGNETOMETER ---
+function addMagReading(alpha) {
+  if (!magReadings.length) { magReadings.push(alpha); return alpha; }
+  const avg = circMean(magReadings);
+  let diff = alpha - avg;
+  while (diff > 180) diff -= 360;
+  while (diff < -180) diff += 360;
+  if (Math.abs(diff) > 45) return null;
+  magReadings.push(alpha);
+  if (magReadings.length > 5) magReadings.shift();
+  return circMean(magReadings);
+}
+
+function circMean(arr) {
+  let s=0,c=0;
+  for (const v of arr) { s+=Math.sin(v*Math.PI/180); c+=Math.cos(v*Math.PI/180); }
+  return (Math.atan2(s/arr.length,c/arr.length)*180/Math.PI+360)%360;
+}
+
+function startOrientationListener() {
+  const handler = e => {
+    if (e.alpha === null) return;
+    const f = addMagReading(e.alpha);
+    if (f !== null) magHeading = f;
+  };
+  window.addEventListener('deviceorientationabsolute', handler, true);
+  window.addEventListener('deviceorientation', handler, true);
+}
+
+// --- GPS WATCH ---
+function startWatch() {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  watchId = navigator.geolocation.watchPosition(onGeo, onGeoErr, {
+    enableHighAccuracy: true, maximumAge: 0, timeout: 10000
+  });
+}
+
+function onGeo(pos) {
+  const {latitude:lat, longitude:lng, accuracy, heading:gpsH, speed} = pos.coords;
+  playerLat = lat; playerLng = lng;
+
+  // GPS-derived heading from movement
+  if (posHistory.length > 0) {
+    const prev = posHistory[posHistory.length-1];
+    const moved = getDist(prev.lat, prev.lng, lat, lng);
+    if (moved > 3) {
+      gpsHeading = getBearing(prev.lat, prev.lng, lat, lng);
+    }
+  }
+  // Also use native GPS heading if speed > 1 m/s
+  if (gpsH !== null && speed !== null && speed > 1) {
+    gpsHeading = gpsH;
+  }
+  posHistory.push({lat,lng});
+  if (posHistory.length > 10) posHistory.shift();
+
+  currentDist = getDist(lat, lng, TARGET_LAT, TARGET_LNG);
+  currentBearing = getBearing(lat, lng, TARGET_LAT, TARGET_LNG);
+
+  updateHUD(accuracy);
+  checkArrival();
+}
+
+function onGeoErr() {
+  document.getElementById('status-display').textContent = 'SIGNAL LOST — RETUNE';
+  consecutiveArrivals = 0;
+}
+
+// --- HUD UPDATE ---
+function updateHUD(accuracy) {
+  const bearing = document.getElementById('bearing-display');
+  const zone = document.getElementById('zone-display');
+  const status = document.getElementById('status-display');
+
+  if (retuneMsg) return;
+
+  // Heading display
+  const heading = gpsHeading !== null ? gpsHeading : magHeading;
+  if (heading !== null && currentBearing !== null) {
+    const relBearing = (currentBearing - heading + 360) % 360;
+    bearing.textContent = bearingToCardinal(relBearing);
+  } else if (currentBearing !== null) {
+    bearing.textContent = bearingToCardinal(currentBearing);
+  } else {
+    bearing.textContent = '---';
+  }
+
+  // Zone
+  if (currentDist > FAR_THRESHOLD) {
+    zone.textContent = 'COLD';
+    zone.style.color = '#4488ff';
+  } else if (currentDist > 100) {
+    zone.textContent = 'WARM';
+    zone.style.color = '#ffcc00';
+  } else if (currentDist > ARRIVAL_RADIUS) {
+    zone.textContent = 'HOT';
+    zone.style.color = '#44ff88';
+  }
+
+  // Status
+  if (accuracy > 50) {
+    status.textContent = 'SIGNAL DEGRADED — MOVE TO OPEN AREA';
+  } else if (gpsHeading !== null) {
+    status.textContent = 'SIGNAL LOCKED';
+    status.style.color = '#44ff88';
+  } else if (magHeading !== null) {
+    status.textContent = 'SIGNAL ESTIMATED';
+    status.style.color = '#ffcc00';
+  } else {
+    status.textContent = 'MOVE TO CALIBRATE';
+    status.style.color = '#555';
+  }
+}
+
+// --- ARRIVAL ---
+function checkArrival() {
+  if (arrived || currentDist === null) return;
+  if (currentDist <= ARRIVAL_RADIUS) {
+    consecutiveArrivals++;
+    if (consecutiveArrivals >= 3) triggerArrival();
+  } else {
+    consecutiveArrivals = 0;
+  }
+}
+
+function triggerArrival() {
+  arrived = true;
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  if (navigator.vibrate) navigator.vibrate([200,100,200,100,400]);
+  const ov = document.getElementById('arrival-overlay');
+  ov.classList.add('active');
+  setTimeout(() => { window.location.href = NEXT_URL; }, 2000);
+}
+
+// --- RETUNE ---
+function retune() {
+  posHistory = [];
+  gpsHeading = null;
+  magReadings = [];
+  magHeading = null;
+  consecutiveArrivals = 0;
+  retuneMsg = true;
+  document.getElementById('bearing-display').textContent = '...';
+  document.getElementById('zone-display').textContent = 'RETUNING';
+  document.getElementById('zone-display').style.color = '#ff8c00';
+  document.getElementById('status-display').textContent = 'MOVE TO ACQUIRE';
+  document.getElementById('status-display').style.color = '#ff8c00';
+  startWatch();
+  clearTimeout(retuneMsgTimer);
+  retuneMsgTimer = setTimeout(() => { retuneMsg = false; }, 1500);
+}
+
+// --- BACKGROUND COLOR ---
+function getBgColor() {
+  if (currentDist === null) return [10,10,10];
+  if (currentDist > FAR_THRESHOLD) return [10,10,10];
+  if (currentDist > 200) {
+    const t = 1 - (currentDist - 200) / (FAR_THRESHOLD - 200);
+    return lerp3([10,10,10],[10,20,40],t);
+  }
+  if (currentDist > 100) {
+    const t = 1 - (currentDist - 100) / 100;
+    return lerp3([10,20,40],[40,30,5],t);
+  }
+  if (currentDist > ARRIVAL_RADIUS) {
+    const t = 1 - (currentDist - ARRIVAL_RADIUS) / (100 - ARRIVAL_RADIUS);
+    return lerp3([40,30,5],[5,40,20],t);
+  }
+  return [5,40,20];
+}
+
+function lerp3(a,b,t) {
+  return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+}
+
+// --- DRAW LOOP ---
+function drawLoop(ts) {
+  animFrame = requestAnimationFrame(drawLoop);
+  pulsePhase = (ts / 1000) % (Math.PI * 2);
+
+  // Background
+  const bg = getBgColor();
+  document.body.style.background = `rgb(${bg[0]|0},${bg[1]|0},${bg[2]|0})`;
+
+  if (!ctx) return;
+  ctx.clearRect(0,0,CW,CH);
+
+  const cx = CW/2, cy = CH/2;
+  const maxR = CW * 0.44;
+
+  // Pulse speed based on distance
+  let pulseSpeed = 1.0;
+  if (currentDist !== null) {
+    if (currentDist < 100) pulseSpeed = 3.0;
+    else if (currentDist < FAR_THRESHOLD) pulseSpeed = 1.5 + (FAR_THRESHOLD - currentDist) / FAR_THRESHOLD;
+  }
+  const pPhase = (Date.now() / (1000 / pulseSpeed) * Math.PI * 2 / 1000) % (Math.PI * 2);
+
+  // Sonar rings from target dot position
+  let tx = cx, ty = cy;
+  if (playerLat !== null && currentDist !== null && currentBearing !== null) {
+    const heading = gpsHeading !== null ? gpsHeading : (magHeading !== null ? magHeading : 0);
+    const relAngle = (currentBearing - heading + 360) % 360;
+    const rad = relAngle * Math.PI / 180;
+    const displayDist = currentDist > FAR_THRESHOLD ? FAR_THRESHOLD : currentDist;
+    const dotR = (displayDist / FAR_THRESHOLD) * maxR * 0.85;
+    tx = cx + Math.sin(rad) * dotR;
+    ty = cy - Math.cos(rad) * dotR;
+  }
+
+  // Draw sonar rings
+  const numRings = 4;
+  for (let i = 0; i < numRings; i++) {
+    const phase = (pPhase + (i / numRings) * Math.PI * 2) % (Math.PI * 2);
+    const progress = phase / (Math.PI * 2);
+    const ringR = progress * maxR;
+    const alpha = (1 - progress) * 0.35;
+    ctx.beginPath();
+    ctx.arc(tx, ty, ringR, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,140,0,${alpha})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Faint static rings (distance bands)
+  [0.25, 0.5, 0.75, 1.0].forEach(f => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, maxR * f, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,140,0,0.06)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  });
+
+  // Target dot
+  const targetPulse = 0.7 + 0.3 * Math.sin(pPhase * 2);
+  ctx.beginPath();
+  ctx.arc(tx, ty, 7 * targetPulse, 0, Math.PI * 2);
+  ctx.fillStyle = '#ff8c00';
+  ctx.fill();
+
+  // Player dot (always center)
+  ctx.beginPath();
+  ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  // Player dot ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Crosshair on player
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(cx-14,cy); ctx.lineTo(cx+14,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy-14); ctx.lineTo(cx,cy+14); ctx.stroke();
+
+  // ACQUIRING overlay text on canvas
+  if (playerLat === null) {
+    ctx.fillStyle = 'rgba(255,140,0,0.5)';
+    ctx.font = `${Math.max(7, CW*0.025)}px 'Press Start 2P'`;
+    ctx.textAlign = 'center';
+    ctx.fillText('ACQUIRING...', cx, cy + maxR * 0.55);
+  }
+}
+</script>
+</body>
+</html>
