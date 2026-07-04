@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Knight's Journey: Cryptographic Puzzle Generator</title>
+    
+    <!-- Tailwind CSS for modern responsive layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts for premium medieval/historical feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=IM+Fell+English+SC&family=Special+Elite&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Style Injection for Chess Grids, Animations, and Print Settings -->
+    <style>
+        :root {
+            --vintage-paper: #fbf8f3;
+            --vintage-dark: #2c251e;
+            --vintage-accent: #d3a25d;
+            --walnut-wood: #4a3319;
+            --cream-tile: #f5eedc;
+            --brown-tile: #a08060;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #161310;
+            color: #e6dfd5;
+            background-image: radial-gradient(circle at 50% 50%, #2a221b 0%, #161310 100%);
+            min-height: 100vh;
+        }
+
+        .vintage-title {
+            font-family: 'Cinzel', serif;
+        }
+
+        .handwritten-font {
+            font-family: 'Special Elite', monospace;
+        }
+
+        .antique-card {
+            background-color: #241d17;
+            border: 1px solid #3d3126;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            background-image: linear-gradient(to bottom right, #2c2219, #1c1712);
+        }
+
+        /* Chess Board Styles */
+        .chess-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            position: relative;
+        }
+
+        .chess-tile {
+            position: relative;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+
+        .tile-light {
+            background-color: var(--cream-tile);
+            color: #4a3c31;
+        }
+
+        .tile-dark {
+            background-color: var(--brown-tile);
+            color: #f5eedc;
+        }
+
+        .chess-tile:hover {
+            filter: brightness(1.15) contrast(1.05);
+            transform: scale(1.02);
+            z-index: 10;
+        }
+
+        /* Ribbon paper scroll styling */
+        .ribbon-scroll {
+            background-color: var(--vintage-paper);
+            background-image: radial-gradient(#ffffff 20%, transparent 20%),
+                              radial-gradient(#ffffff 20%, transparent 20%);
+            background-size: 8px 8px;
+            background-position: 0 0, 4px 4px;
+            border: 2px dashed #8b7155;
+            color: var(--vintage-dark);
+            position: relative;
+            box-shadow: inset 0 0 15px rgba(139, 113, 85, 0.15), 0 4px 12px rgba(0,0,0,0.25);
+        }
+
+        /* Print Media Styles prioritizing Landscape optimization */
+        @media print {
+            @page {
+                size: landscape;
+                margin: 0.4in;
+            }
+
+            body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                background-image: none !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-layout {
+                display: block !important;
+                width: 100% !important;
+                background: #ffffff !important;
+            }
+
+            .print-card {
+                background: #ffffff !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                color: #000000 !important;
+            }
+
+            .ribbon-scroll {
+                background: #ffffff !important;
+                color: #000000 !important;
+                border: 2px dashed #000000 !important;
+                box-shadow: none !important;
+                margin-top: 10px !important;
+                margin-bottom: 30px !important;
+            }
+
+            .ribbon-scroll span {
+                border-right: 1px solid #000000 !important;
+                color: #000000 !important;
+            }
+
+            .tile-light {
+                background-color: #f0f0f0 !important;
+                color: #000000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .tile-dark {
+                background-color: #b0b0b0 !important;
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            svg path {
+                stroke: #000000 !important;
+                stroke-width: 3.5px !important;
+            }
+
+            .print-page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+<body class="p-3 md:p-8">
+
+    <div class="max-w-7xl mx-auto no-print mb-8">
+        <header class="flex flex-col md:flex-row justify-between items-center border-b border-stone-800 pb-5 gap-4">
+            <div>
+                <h1 class="vintage-title text-3xl md:text-4xl text-amber-500 font-bold tracking-wider flex items-center gap-3">
+                    <span>♞</span> THE KNIGHT'S JOURNEY
+                </h1>
+                <p class="text-sm text-stone-400 mt-1 uppercase tracking-widest handwritten-font">Cryptographic Puzzle & Artifact Generator</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="window.print()" class="bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold py-2.5 px-5 rounded-lg shadow-lg flex items-center gap-2 transition-all duration-150 text-sm uppercase tracking-wider">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    Print Handouts
+                </button>
+            </div>
+        </header>
+    </div>
+
+    <!-- MAIN CONFIGURATION WORKSPACE -->
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 no-print">
+        
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            <div class="antique-card rounded-2xl p-6 flex flex-col gap-5">
+                <div class="border-b border-stone-800 pb-3 flex items-center gap-2">
+                    <div class="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
+                    <h2 class="vintage-title text-xl text-stone-100 font-semibold uppercase tracking-wider">Puzzle Settings</h2>
+                </div>
+
+                <!-- Message Input Area -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="messageInput" class="text-xs font-bold uppercase tracking-widest text-stone-400">Secret Message</label>
+                        <span id="charCount" class="text-xs font-mono text-amber-500 bg-stone-900 px-2 py-0.5 rounded border border-stone-800">0 / 64</span>
+                    </div>
+                    <textarea id="messageInput" maxlength="64" rows="3" 
+                        class="w-full bg-stone-950 border border-stone-800 rounded-xl p-3 text-stone-100 placeholder-stone-600 focus:outline-none focus:border-amber-500 transition-colors duration-200 handwritten-font text-lg tracking-wide uppercase resize-none"
+                        placeholder="ENTER SECRETS HERE..." oninput="updateEncoding()"></textarea>
+                    <p class="text-[10px] text-stone-500 mt-1 leading-relaxed">Null characters will automatically populate empty grid cells up to 64 letters to guarantee mathematical completeness.</p>
+                </div>
+
+                <!-- Preset Chess Openings -->
+                <div>
+                    <label for="openingSelect" class="block text-xs font-bold uppercase tracking-widest text-stone-400 mb-2">Chess Opening Starting Square</label>
+                    <select id="openingSelect" onchange="handleOpeningChange()" 
+                        class="w-full bg-stone-950 border border-stone-800 rounded-xl p-3 text-stone-100 focus:outline-none focus:border-amber-500 transition-colors duration-200">
+                        <option value="e4">Sicilian Defense (e4 / c5)</option>
+                        <option value="d4">Queen's Gambit (d4 / d5)</option>
+                        <option value="c4">English Opening (c4 / e5)</option>
+                        <option value="f3">Réti Opening (Nf3 -> f3)</option>
+                        <option value="e6">French Defense (e4 / e6)</option>
+                        <option value="c6">Caro-Kann Defense (e4 / c6)</option>
+                        <option value="d5">Scandinavian Defense (e4 / d5)</option>
+                        <option value="f4">Bird's Opening (f4)</option>
+                        <option value="g3">King's Fianchetto / Benko (g3)</option>
+                        <option value="b3">Nimzo-Larsen Attack (b3)</option>
+                        <option value="a4">Ware Opening (a4)</option>
+                        <option value="h4">Kadas Opening (h4)</option>
+                    </select>
+                </div>
+
+                <!-- Custom Starting Coordinate Selector -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-stone-400 mb-2">Target File</label>
+                        <select id="coordFile" onchange="handleCoordChange()" class="w-full bg-stone-950 border border-stone-800 rounded-xl p-2.5 text-stone-100 focus:outline-none focus:border-amber-500 transition-colors duration-200 font-mono">
+                            <option value="a">a</option><option value="b">b</option><option value="c">c</option><option value="d">d</option>
+                            <option value="e" selected>e</option><option value="f">f</option><option value="g">g</option><option value="h">h</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-widest text-stone-400 mb-2">Target Rank</label>
+                        <select id="coordRank" onchange="handleCoordChange()" class="w-full bg-stone-950 border border-stone-800 rounded-xl p-2.5 text-stone-100 focus:outline-none focus:border-amber-500 transition-colors duration-200 font-mono">
+                            <option value="8">8</option><option value="7">7</option><option value="6">6</option><option value="5">5</option>
+                            <option value="4" selected>4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Pad Character Type -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-widest text-stone-400 mb-2">Paddings / Null Type</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="setNullType('random')" id="nullRandom" class="py-2 px-3 text-xs uppercase font-medium border border-amber-500 bg-amber-500/10 text-amber-400 rounded-lg transition-all duration-150">Random</button>
+                        <button onclick="setNullType('X')" id="nullX" class="py-2 px-3 text-xs uppercase font-medium border border-stone-800 hover:border-stone-700 bg-stone-950 text-stone-300 rounded-lg transition-all duration-150">X Fill</button>
+                        <button onclick="setNullType('numbers')" id="nullNum" class="py-2 px-3 text-xs uppercase font-medium border border-stone-800 hover:border-stone-700 bg-stone-950 text-stone-300 rounded-lg transition-all duration-150">Numbers</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="antique-card rounded-2xl p-6">
+                <h3 class="vintage-title text-sm text-stone-300 font-semibold uppercase tracking-widest mb-4">Display Configurations</h3>
+                <div class="flex flex-col gap-3">
+                    <label class="flex items-center gap-3 cursor-pointer text-stone-300 hover:text-stone-100 text-sm">
+                        <input type="checkbox" id="togglePath" checked onchange="drawTourPath()" class="w-4 h-4 accent-amber-500 bg-stone-950 border-stone-800 rounded">
+                        <span>Show Path Coordinates Line</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer text-stone-300 hover:text-stone-100 text-sm">
+                        <input type="checkbox" id="toggleNumbers" checked onchange="drawTourPath()" class="w-4 h-4 accent-amber-500 bg-stone-950 border-stone-800 rounded">
+                        <span>Show Path Step Indices (1 - 64)</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer text-stone-300 hover:text-stone-100 text-sm">
+                        <input type="checkbox" id="toggleLetters" checked onchange="toggleBoardLetters()" class="w-4 h-4 accent-amber-500 bg-stone-950 border-stone-800 rounded">
+                        <span>Display Letter Grid overlay</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            <div class="antique-card rounded-2xl p-6 flex flex-col items-center">
+                <div class="w-full flex justify-between items-center mb-4 border-b border-stone-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        <h3 class="vintage-title text-base text-stone-200 uppercase tracking-wider">Vector Live Preview Map</h3>
+                    </div>
+                    <span class="text-xs uppercase text-stone-400 font-semibold tracking-widest bg-stone-900 border border-stone-800 rounded px-2.5 py-1">
+                        Start: <strong id="startTag" class="text-amber-500">E4</strong>
+                    </span>
+                </div>
+
+                <!-- Chessboard Container with dynamic SVG Vector Layer -->
+                <div class="w-full max-w-[480px] border-4 border-stone-950 rounded-xl overflow-hidden shadow-2xl relative">
+                    
+                    <!-- File algebraic notations at top -->
+                    <div class="flex bg-stone-950 text-stone-400 text-[10px] font-semibold py-0.5 select-none font-mono text-center">
+                        <div class="w-1/8 flex-1">A</div><div class="w-1/8 flex-1">B</div><div class="w-1/8 flex-1">C</div><div class="w-1/8 flex-1">D</div>
+                        <div class="w-1/8 flex-1">E</div><div class="w-1/8 flex-1">F</div><div class="w-1/8 flex-1">G</div><div class="w-1/8 flex-1">H</div>
+                    </div>
+
+                    <!-- Row-column container -->
+                    <div class="flex">
+                        <!-- Left Rank notations -->
+                        <div class="flex flex-col bg-stone-950 text-stone-400 text-[10px] font-semibold w-5 select-none font-mono text-center justify-around py-2">
+                            <div>8</div><div>7</div><div>6</div><div>5</div><div>4</div><div>3</div><div>2</div><div>1</div>
+                        </div>
+
+                        <!-- Grid -->
+                        <div class="flex-1 relative">
+                            <div id="chessboard" class="chess-grid">
+                                <!-- Generated Dynamically by JS -->
+                            </div>
+                            
+                            <!-- SVG overlay drawing vector paths on top of the DOM board -->
+                            <svg id="svgOverlay" class="absolute inset-0 w-full h-full pointer-events-none z-20" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#ea580c" stop-opacity="0.9" />
+                                        <stop offset="50%" stop-color="#f59e0b" stop-opacity="0.8" />
+                                        <stop offset="100%" stop-color="#10b981" stop-opacity="0.9" />
+                                    </linearGradient>
+                                </defs>
+                                <path id="svgPath" d="" fill="none" stroke="url(#pathGradient)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        
+                        <!-- Right Rank notations -->
+                        <div class="flex flex-col bg-stone-950 text-stone-400 text-[10px] font-semibold w-5 select-none font-mono text-center justify-around py-2">
+                            <div>8</div><div>7</div><div>6</div><div>5</div><div>4</div><div>3</div><div>2</div><div>1</div>
+                        </div>
+                    </div>
+
+                    <!-- File algebraic notations at bottom -->
+                    <div class="flex bg-stone-950 text-stone-400 text-[10px] font-semibold py-0.5 select-none font-mono text-center">
+                        <div class="w-1/8 flex-1">A</div><div class="w-1/8 flex-1">B</div><div class="w-1/8 flex-1">C</div><div class="w-1/8 flex-1">D</div>
+                        <div class="w-1/8 flex-1">E</div><div class="w-1/8 flex-1">F</div><div class="w-1/8 flex-1">G</div><div class="w-1/8 flex-1">H</div>
+                    </div>
+                </div>
+
+                <div class="w-full max-w-[480px] mt-4 p-3 bg-stone-950/50 border border-stone-800/60 rounded-xl text-xs text-stone-400 text-center">
+                    💡 Click directly on any chessboard tile above to shift the starting node!
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <section class="max-w-7xl mx-auto mt-8 no-print">
+        <div class="antique-card rounded-2xl p-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-stone-800 pb-4 mb-4 gap-3">
+                <div>
+                    <h2 class="vintage-title text-xl text-stone-100 font-bold tracking-wide flex items-center gap-2">
+                        <span>✂️</span> Cipher Ribbon Strip Handout
+                    </h2>
+                    <p class="text-xs text-stone-400 mt-0.5">Copy or print this horizontal strip. Scissors line indicators are built-in.</p>
+                </div>
+                <button onclick="copyStripText()" class="text-xs font-semibold bg-stone-800 hover:bg-stone-700 text-amber-500 px-4 py-2 rounded-lg border border-stone-700 transition-colors duration-150 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                    Copy Plaintext Strip
+                </button>
+            </div>
+
+            <!-- Scroll output -->
+            <div class="ribbon-scroll rounded-xl p-4 overflow-x-auto select-all">
+                <div id="scrambledRibbon" class="flex flex-nowrap min-w-max border-y border-stone-300 py-2">
+                    <!-- Letter Blocks Generated Dynamically by JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="print-layout hidden">
+        <div class="print-card max-w-5xl mx-auto flex flex-col p-4 text-black bg-white">
+            <div class="text-center mb-8 border-b-2 border-black pb-4">
+                <h1 class="text-3xl font-bold uppercase tracking-widest text-black" style="font-family: Georgia, serif;">THE KNIGHT'S JOURNEY</h1>
+                <p class="text-xs uppercase tracking-widest mt-1">Cryptographic Mystery Puzzle Artifact</p>
+            </div>
+
+            <!-- Puzzle Strip Handout Area -->
+            <div class="mb-10">
+                <h2 class="text-sm font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span>✂️</span> 1. The Scrambled Cipher Tape (Cut Along Dotted Borders)
+                </h2>
+                <div class="ribbon-scroll p-2 overflow-hidden border-2 border-dashed border-black">
+                    <div id="printRibbonOutput" class="flex flex-nowrap w-full">
+                        <!-- Cloned strip dynamically inserted -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-8 items-start">
+                <!-- Visual Map -->
+                <div>
+                    <h2 class="text-sm font-bold uppercase tracking-widest mb-3">2. Vector Pattern Map (The Path Diagram)</h2>
+                    <div class="border-2 border-black rounded p-2 bg-white flex flex-col items-center">
+                        <div id="printChessboard" class="chess-grid w-full max-w-[340px] border border-black relative">
+                            <!-- Cloned grid automatically mapped -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Handout Legends and Solving Rules -->
+                <div class="flex flex-col gap-4 text-sm leading-relaxed" style="font-family: Georgia, serif;">
+                    <h2 class="text-sm font-bold uppercase tracking-widest mb-1" style="font-family: inherit;">Solving Protocols</h2>
+                    <div class="border-l-4 border-black pl-4 py-1 italic">
+                        "Locate the true square determined by the starting master opening. Transcribe the 64 letter strip straight onto your coordinates board. Let the Knight tread along the paths defined herein to reveal the hidden intelligence."
+                    </div>
+                    <div class="space-y-3 mt-2 text-xs">
+                        <p><strong>Step I:</strong> Carefully cut out the Scrambled Cipher Tape above with scissors.</p>
+                        <p><strong>Step II:</strong> Transcribe the 64 characters from left-to-right, row-by-row onto a standard blank chessboard (A8 through H1).</p>
+                        <p><strong>Step III:</strong> Identify the target starting chess square corresponding to the designated master opening.</p>
+                        <p><strong>Step IV:</strong> Tracing the unique, closed Knight's Tour from that coordinate square, read off the letters sequentially along the path lines. Your plaintext will formulate seamlessly.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Overlay Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-stone-900 border border-amber-500 text-stone-100 rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <span class="text-amber-500 text-lg">✦</span>
+        <span id="toastMessage" class="text-sm font-medium">Text Copied Successfully!</span>
+    </div>
+
+    <!-- SCRIPT ENGINE -->
+    <script>
+        
+        // Ron Brown's highly verified symmetrical 8x8 closed Knight's Tour values
+        const RON_BROWN_TOUR = [
+            [50, 11, 24, 63, 14, 37, 26, 35],
+            [23, 62, 51, 12, 25, 34, 15, 38],
+            [10, 49, 64, 21, 40, 13, 36, 27],
+            [61, 22,  9, 52, 33, 28, 39, 16],
+            [48,  7, 60,  1, 20, 41, 54, 29],
+            [59,  4, 45,  8, 53, 32, 17, 42],
+            [ 6, 47,  2, 57, 44, 19, 30, 55],
+            [ 3, 58,  5, 46, 31, 56, 43, 18]
+        ];
+
+        // Mappings for classical openings to single squares
+        const OPENING_SQUARE_MAP = {
+            'e4': { col: 4, row: 4 }, // King's Pawn (e4)
+            'd4': { col: 3, row: 4 }, // Queen's Pawn (d4)
+            'c4': { col: 2, row: 4 }, // English (c4)
+            'c5': { col: 2, row: 3 }, // Sicilian (c5)
+            'e6': { col: 4, row: 2 }, // French (e6)
+            'c6': { col: 2, row: 2 }, // Caro-Kann (c6)
+            'd5': { col: 3, row: 3 }, // Scandinavian (d5)
+            'f3': { col: 5, row: 5 }, // Réti (f3)
+            'f4': { col: 5, row: 4 }, // Bird's (f4)
+            'g3': { col: 6, row: 5 }, // Benko (g3)
+            'b3': { col: 1, row: 5 }, // Larsen's (b3)
+            'a4': { col: 0, row: 4 }, // Ware (a4)
+            'h4': { col: 7, row: 4 }  // Kadas (h4)
+        };
+
+        // State variables
+        let selectedStartCoords = { col: 4, row: 4 }; // Default e4
+        let selectedNullType = 'random';
+
+        window.onload = function() {
+            buildInteractiveBoard();
+            updateEncoding();
+        };
+
+        // Building the chessboard visually inside both screen view and print view
+        function buildInteractiveBoard() {
+            const board = document.getElementById('chessboard');
+            const printBoard = document.getElementById('printChessboard');
+            board.innerHTML = '';
+            printBoard.innerHTML = '';
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const isDark = (r + c) % 2 === 1;
+                    const tileClass = isDark ? 'tile-dark' : 'tile-light';
+                    
+                    // Main interactive tile
+                    const tile = document.createElement('div');
+                    tile.className = `chess-tile ${tileClass} flex flex-col justify-between p-1 select-none`;
+                    tile.dataset.row = r;
+                    tile.dataset.col = c;
+                    tile.id = `tile-${r}-${c}`;
+                    tile.onclick = () => selectSquareFromClick(c, r);
+
+                    // algebraic reference inside the grid
+                    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+                    const notation = files[c] + (8 - r);
+                    
+                    // Setup internal content structures
+                    tile.innerHTML = `
+                        <div class="flex justify-between w-full text-[8px] font-mono opacity-50">
+                            <span>${notation}</span>
+                            <span class="step-num font-bold text-amber-500">${RON_BROWN_TOUR[r][c]}</span>
+                        </div>
+                        <div class="tile-letter handwritten-font text-center font-bold text-base md:text-lg tracking-wide select-none my-auto"></div>
+                    `;
+                    
+                    board.appendChild(tile);
+
+                    // Clone perfect mirror layout for pure printing representation
+                    const printTile = tile.cloneNode(true);
+                    printTile.id = `print-tile-${r}-${c}`;
+                    printBoard.appendChild(printTile);
+                }
+            }
+        }
+
+        function selectSquareFromClick(col, row) {
+            selectedStartCoords = { col, row };
+            
+            // Sync form dropdown components
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            document.getElementById('coordFile').value = files[col];
+            document.getElementById('coordRank').value = (8 - row);
+
+            // Attempt matching opening presets
+            const notation = files[col] + (8 - row);
+            const openingDropdown = document.getElementById('openingSelect');
+            if (OPENING_SQUARE_MAP[notation]) {
+                openingDropdown.value = notation;
+            } else {
+                openingDropdown.value = ""; // Custom / Unlisted
+            }
+
+            updateEncoding();
+        }
+
+        function handleOpeningChange() {
+            const opening = document.getElementById('openingSelect').value;
+            if (opening && OPENING_SQUARE_MAP[opening]) {
+                selectedStartCoords = OPENING_SQUARE_MAP[opening];
+                
+                const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+                document.getElementById('coordFile').value = files[selectedStartCoords.col];
+                document.getElementById('coordRank').value = (8 - selectedStartCoords.row);
+            }
+            updateEncoding();
+        }
+
+        function handleCoordChange() {
+            const fileChar = document.getElementById('coordFile').value;
+            const rankNum = parseInt(document.getElementById('coordRank').value);
+            
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            const col = files.indexOf(fileChar);
+            const row = 8 - rankNum;
+
+            selectedStartCoords = { col, row };
+            
+            // Update opening selection if matching
+            const notation = fileChar + rankNum;
+            const openingDropdown = document.getElementById('openingSelect');
+            if (OPENING_SQUARE_MAP[notation]) {
+                openingDropdown.value = notation;
+            } else {
+                openingDropdown.value = ""; // Custom
+            }
+
+            updateEncoding();
+        }
+
+        function setNullType(type) {
+            selectedNullType = type;
+            
+            // Toggle highlight styles
+            ['nullRandom', 'nullX', 'nullNum'].forEach(id => {
+                const btn = document.getElementById(id);
+                btn.className = "py-2 px-3 text-xs uppercase font-medium border border-stone-800 bg-stone-950 text-stone-300 rounded-lg transition-all duration-150";
+            });
+
+            let activeBtnId = 'nullRandom';
+            if (type === 'X') activeBtnId = 'nullX';
+            if (type === 'numbers') activeBtnId = 'nullNum';
+
+            document.getElementById(activeBtnId).className = "py-2 px-3 text-xs uppercase font-medium border border-amber-500 bg-amber-500/10 text-amber-400 rounded-lg transition-all duration-150";
+            updateEncoding();
+        }
+
+        function updateEncoding() {
+            let text = document.getElementById('messageInput').value.toUpperCase();
+            text = text.replace(/[^A-Z0-9 ]/g, ''); // Filter out unreadable symbols
+            
+            const charCount = document.getElementById('charCount');
+            charCount.textContent = `${text.length} / 64`;
+
+            const fullLength = 64;
+            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            
+            // Pad out message to exactly 64 cells using selected padding styles
+            let paddedMessage = text;
+            let counter = 1;
+            while (paddedMessage.length < fullLength) {
+                if (selectedNullType === 'random') {
+                    paddedMessage += alphabet[Math.floor(Math.random() * alphabet.length)];
+                } else if (selectedNullType === 'X') {
+                    paddedMessage += "X";
+                } else {
+                    paddedMessage += (counter % 10).toString();
+                    counter++;
+                }
+            }
+            if (paddedMessage.length > fullLength) {
+                paddedMessage = paddedMessage.substring(0, fullLength);
+            }
+
+            // Target step value corresponding to start tile coordinates
+            const startStepValue = RON_BROWN_TOUR[selectedStartCoords.row][selectedStartCoords.col];
+
+            // Re-order letter coordinates onto standard 8x8 chessboard dimensions
+            let gridLetters = new Array(64);
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const stepValue = RON_BROWN_TOUR[r][c];
+                    // Shift indices relative to start point (wrapped at 64 elements)
+                    const offsetIndex = (stepValue - startStepValue + 64) % 64;
+                    const flatBoardIndex = r * 8 + c;
+                    
+                    const char = paddedMessage.charAt(offsetIndex);
+                    gridLetters[flatBoardIndex] = char;
+
+                    // Inject letter to primary view grid and print views
+                    const screenTile = document.getElementById(`tile-${r}-${c}`);
+                    const printTile = document.getElementById(`print-tile-${r}-${c}`);
+                    
+                    if (screenTile) {
+                        screenTile.querySelector('.tile-letter').textContent = char;
+                    }
+                    if (printTile) {
+                        printTile.querySelector('.tile-letter').textContent = char;
+                    }
+                }
+            }
+
+            // Sync visual coordinates text tag
+            const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+            const notationTag = files[selectedStartCoords.col] + (8 - selectedStartCoords.row);
+            document.getElementById('startTag').textContent = notationTag;
+
+            // Render Output Cipher scrolls
+            renderScrambledRibbon(gridLetters);
+            drawTourPath();
+            updateHighlighting();
+        }
+
+        function renderScrambledRibbon(gridLetters) {
+            const ribbon = document.getElementById('scrambledRibbon');
+            const printRibbon = document.getElementById('printRibbonOutput');
+            
+            ribbon.innerHTML = '';
+            printRibbon.innerHTML = '';
+
+            gridLetters.forEach((char, idx) => {
+                const num = (idx + 1).toString().padStart(2, '0');
+                
+                // Primary screen tape segment
+                const segment = document.createElement('div');
+                segment.className = "flex flex-col items-center border-r border-stone-300 px-2.5 min-w-[34px] cursor-default hover:bg-stone-200 transition-colors duration-150 select-all";
+                segment.innerHTML = `
+                    <span class="text-[9px] font-mono text-stone-400 font-bold select-none">${num}</span>
+                    <span class="text-xl font-bold font-mono tracking-wide text-stone-900">${char}</span>
+                `;
+                ribbon.appendChild(segment);
+
+                // Clone segment directly into physical landscape print layout
+                const printSegment = segment.cloneNode(true);
+                printSegment.className = "flex-1 flex flex-col items-center border-r border-black py-1";
+                printSegment.querySelector('span').style.color = "#000000";
+                printRibbon.appendChild(printSegment);
+            });
+        }
+
+        function updateHighlighting() {
+            // Remove previous active outline effects
+            document.querySelectorAll('.chess-tile').forEach(tile => {
+                tile.style.outline = 'none';
+                tile.style.boxShadow = 'none';
+            });
+            document.querySelectorAll('.print-layout .chess-tile').forEach(tile => {
+                tile.style.outline = 'none';
+                tile.style.boxShadow = 'none';
+            });
+
+            // Set dynamic highlighted elements
+            const activeTile = document.getElementById(`tile-${selectedStartCoords.row}-${selectedStartCoords.col}`);
+            const printActiveTile = document.getElementById(`print-tile-${selectedStartCoords.row}-${selectedStartCoords.col}`);
+            
+            if (activeTile) {
+                activeTile.style.outline = '3px solid #f59e0b';
+                activeTile.style.outlineOffset = '-3px';
+                activeTile.style.boxShadow = '0 0 15px rgba(245, 158, 11, 0.5)';
+            }
+            if (printActiveTile) {
+                printActiveTile.style.outline = '3px solid #000000';
+                printActiveTile.style.outlineOffset = '-3px';
+            }
+        }
+
+        function drawTourPath() {
+            const svg = document.getElementById('svgOverlay');
+            const svgPath = document.getElementById('svgPath');
+            const togglePath = document.getElementById('togglePath').checked;
+            const toggleNumbers = document.getElementById('toggleNumbers').checked;
+
+            // Clear numbers from DOM
+            document.querySelectorAll('.step-num').forEach(el => {
+                el.style.display = toggleNumbers ? 'inline' : 'none';
+            });
+
+            if (!togglePath) {
+                svgPath.setAttribute('d', '');
+                return;
+            }
+
+            // Get absolute dimensions from the container element
+            const rect = svg.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+
+            const tileWidth = rect.width / 8;
+            const tileHeight = rect.height / 8;
+
+            // Sort coordinates list matching step 1 sequentially through step 64
+            let steps = new Array(64);
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const stepVal = RON_BROWN_TOUR[r][c];
+                    steps[stepVal - 1] = { r, c };
+                }
+            }
+
+            // Calculate SVG coordinates centered within individual board cells
+            let points = steps.map(pt => {
+                const x = (pt.c * tileWidth) + (tileWidth / 2);
+                const y = (pt.r * tileHeight) + (tileHeight / 2);
+                return { x, y };
+            });
+
+            // Draw line string paths
+            let dPath = `M ${points[0].x} ${points[0].y}`;
+            for (let i = 1; i < points.length; i++) {
+                dPath += ` L ${points[i].x} ${points[i].y}`;
+            }
+            // Close the loop beautifully
+            dPath += ` Z`;
+
+            svgPath.setAttribute('d', dPath);
+        }
+
+        // Toggle letter display layouts
+        function toggleBoardLetters() {
+            const show = document.getElementById('toggleLetters').checked;
+            document.querySelectorAll('.tile-letter').forEach(el => {
+                el.style.display = show ? 'block' : 'none';
+            });
+        }
+
+        // Helper to copy raw letters
+        function copyStripText() {
+            let text = document.getElementById('messageInput').value.toUpperCase();
+            text = text.replace(/[^A-Z0-9 ]/g, '');
+            
+            // Build temporary padded version for direct clipboard capture
+            const fullLength = 64;
+            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            let padded = text;
+            let counter = 1;
+            while (padded.length < fullLength) {
+                if (selectedNullType === 'random') {
+                    padded += alphabet[Math.floor(Math.random() * alphabet.length)];
+                } else if (selectedNullType === 'X') {
+                    padded += "X";
+                } else {
+                    padded += (counter % 10).toString();
+                    counter++;
+                }
+            }
+            if (padded.length > fullLength) padded = padded.substring(0, fullLength);
+
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = padded;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+
+            showToast("Cipher tape sequence copied successfully!");
+        }
+
+        // Beautiful custom toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            
+            toastMsg.textContent = message;
+            toast.style.opacity = '1';
+            toast.style.pointerEvents = 'auto';
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.pointerEvents = 'none';
+            }, 3000);
+        }
+
+        // Handle dynamically resizing elements
+        window.addEventListener('resize', () => {
+            drawTourPath();
+        });
+    </script>
+</body>
+</html>
