@@ -1,2 +1,2 @@
 # arg-incursion
-Game project created in Makko AI Studio
+random ARG stuff. 
