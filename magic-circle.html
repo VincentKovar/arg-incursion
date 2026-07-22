@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinity UI Morph</title>
+    <style>
+       /* DESIGN TOKENS (Extract these for your Style Dictionary) */
+:root {
+    --color-bg: #000;              /* Dark UI background */
+    --color-neon-trace: #3dff7d;   /* Neon green from reference */
+    --color-neon-glow: #3dff7d;    /* The glowing halo color */
+    --font-ui: sans-serif;
+}
+
+body {
+    background-color: var(--color-bg);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.ui-wrapper {
+    width: 200px; /* Base size; fully scaleable */
+    height: auto;
+}
+
+.morphic-svg {
+    width: 100%;
+    height: auto;
+}
+
+.morphic-path {
+    fill: none;
+    stroke: var(--color-neon-trace);
+    stroke-width: 1.5;
+    /* Defines the morphing sequence: duration, delay, behavior */
+    animation: morph-to-infinity 5s ease-in-out forwards;
+}
+
+.blinking-dot {
+    fill: var(--color-neon-glow);
+    /* Initial state: hidden */
+    opacity: 0;
+    /* Starts *after* the morph finishes (at 5 seconds) */
+    animation: blink-in 1.5s ease-in-out 5s infinite;
+}
+
+/* THE ANIMATION KEYFRAMES */
+
+@keyframes morph-to-infinity {
+    /* 0% to 20%: Holds initial perfect circle (like reference) */
+    0%, 20% {
+        d: path("M 50 10 A 40 40 0 1 1 50 90 A 40 40 0 1 1 50 10");
+        transform: rotate(0deg);
+        transform-origin: center;
+    }
+    
+    /* 100%: Reaches complete Infinity symbol */
+    100% {
+        /* The cubic-bezier defines the precise loop twist */
+        d: path("M 50 50 C 35 30, 15 30, 15 50 C 15 70, 35 70, 50 50 C 65 30, 85 30, 85 50 C 85 70, 65 70, 50 50 Z");
+        transform: rotate(90deg); /* Twist action */
+        transform-origin: center;
+    }
+}
+
+@keyframes blink-in {
+    /* Gradual appear and then continuous pulsing blink */
+    0% { opacity: 0; }
+    20%, 80% { opacity: 1; }
+    100% { opacity: 0; }
+}
+    </style>
+</head>
+<body>
+
+    <!-- The self-contained UI element -->
+    <div class="ui-wrapper">
+        <svg viewBox="0 0 100 100" class="morphic-svg">
+            <defs>
+                <!-- Reuse the glow filter from the source design -->
+                <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur"/>
+                    <feMerge>
+                        <feMergeNode in="blur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+            
+            <!-- This path handles the morph animation -->
+            <path class="morphic-path" 
+                  d="M 50 10 A 40 40 0 1 1 50 90 A 40 40 0 1 1 50 10" 
+                  filter="url(#neon-glow)" />
+
+            <!-- This circle is the blinking dot -->
+            <circle class="blinking-dot" cx="72" cy="50" r="2" filter="url(#neon-glow)" />
+        </svg>
+    </div>
+
+</body>
+</html>
