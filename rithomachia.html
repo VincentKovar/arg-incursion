@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Rithmomachia &mdash; The Philosophers' Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --parchment:#ece0c4;
+  --parchment-dark:#cdb583;
+  --parchment-darker:#b89e6c;
+  --ink:#2b2118;
+  --ink-soft:#5a4a35;
+  --gold:#a97c26;
+  --gold-bright:#d9ac4e;
+  --gold-pale:#f2dfa5;
+  --oxblood:#5e1a20;
+  --oxblood-bright:#8a2b30;
+  --verdigris:#3f6357;
+  --verdigris-bright:#5c9080;
+  --shadow:rgba(30,22,12,0.45);
+  --sq-size:clamp(32px, 8.6vw, 56px);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255,247,220,0.35), transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgba(120,90,40,0.25), transparent 55%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(139,111,60,0.04) 0 2px, transparent 2px 5px),
+    linear-gradient(160deg, #e9dcb8 0%, #dcc898 45%, #d3ba81 100%);
+  color:var(--ink);
+  font-family:'EB Garamond', Georgia, serif;
+  font-size:17px;
+  padding:18px 14px 60px;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.display{font-family:'Cinzel', 'Cinzel Decorative', serif;}
+::selection{background:var(--gold-bright);color:var(--ink);}
+
+/* ---------- header ---------- */
+.banner{
+  max-width:920px;margin:0 auto 14px;text-align:center;position:relative;padding:10px 10px 4px;
+}
+.flourish{width:100%;max-width:520px;height:26px;margin:0 auto;opacity:0.55;color:var(--gold);}
+.title{
+  font-family:'Cinzel Decorative', serif;
+  font-weight:900;
+  font-size:clamp(28px, 6vw, 44px);
+  letter-spacing:0.06em;
+  color:var(--ink);
+  text-shadow:0 1px 0 rgba(255,255,255,0.4), 0 2px 6px rgba(94,26,32,0.15);
+  margin:2px 0 0;
+}
+.subtitle{
+  font-family:'EB Garamond', serif;
+  font-style:italic;
+  color:var(--ink-soft);
+  font-size:clamp(13px,2.6vw,17px);
+  letter-spacing:0.03em;
+  margin:2px 0 8px;
+}
+.onboard-banner{
+  max-width:640px;margin:0 auto 10px;background:rgba(255,251,235,0.55);
+  border:1px solid var(--parchment-darker);border-radius:8px;
+  padding:8px 34px 8px 14px;font-size:14.5px;color:var(--ink-soft);position:relative;
+}
+.onboard-banner b{color:var(--ink);}
+.onboard-close{
+  position:absolute;top:4px;right:6px;background:none;border:none;color:var(--ink-soft);
+  font-size:18px;cursor:pointer;line-height:1;padding:4px 6px;
+}
+.onboard-banner.hidden{display:none;}
+
+/* ---------- toolbar ---------- */
+.toolbar{
+  max-width:920px;margin:0 auto 14px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;
+}
+.btn{
+  font-family:'Cinzel', serif;font-size:13px;letter-spacing:0.03em;
+  border:1px solid var(--ink);border-radius:5px;
+  background:linear-gradient(180deg, var(--gold-pale), var(--gold-bright));
+  color:var(--ink);padding:8px 14px;cursor:pointer;
+  box-shadow:0 2px 0 rgba(43,33,24,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
+  transition:transform .08s ease;
+}
+.btn:hover{filter:brightness(1.05);}
+.btn:active{transform:translateY(1px);}
+.btn:disabled{opacity:0.45;cursor:not-allowed;filter:none;}
+.btn.secondary{background:linear-gradient(180deg,#efe6cc,#d9c79a);}
+.btn.danger{background:linear-gradient(180deg,#c98f8f,var(--oxblood-bright));color:#fff5ea;}
+.seg{display:flex;border:1px solid var(--ink);border-radius:5px;overflow:hidden;}
+.seg button{
+  font-family:'Cinzel',serif;font-size:12.5px;padding:8px 12px;border:none;cursor:pointer;
+  background:#efe6cc;color:var(--ink-soft);
+}
+.seg button.active{background:var(--verdigris);color:#fbf4dd;}
+
+/* ---------- layout ---------- */
+.game-wrap{
+  max-width:1080px;margin:0 auto;display:flex;gap:16px;justify-content:center;align-items:flex-start;flex-wrap:wrap;
+}
+.tray{
+  width:150px;min-height:120px;background:rgba(255,251,235,0.5);
+  border:1px solid var(--parchment-darker);border-radius:8px;padding:10px;
+  box-shadow:inset 0 0 12px rgba(94,26,32,0.06);
+}
+.tray h3{margin:0 0 6px;font-size:13px;letter-spacing:0.04em;color:var(--ink-soft);display:flex;justify-content:space-between;}
+.tray h3 span.total{color:var(--gold);font-weight:700;}
+.tray-items{display:flex;flex-wrap:wrap;gap:5px;}
+.tray .mini-piece{width:26px;height:26px;font-size:10px;}
+
+.center-col{display:flex;flex-direction:column;align-items:center;gap:10px;}
+
+.status-bar{
+  max-width:600px;min-height:44px;text-align:center;font-size:15px;color:var(--ink);
+  background:rgba(255,251,235,0.65);border:1px solid var(--parchment-darker);border-radius:8px;
+  padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.status-bar .turn-dot{width:10px;height:10px;border-radius:50%;flex:none;}
+.status-bar .turn-dot.white{background:var(--gold-bright);border:1px solid var(--ink);}
+.status-bar .turn-dot.black{background:var(--oxblood-bright);border:1px solid var(--ink);}
+
+.board-frame{
+  padding:14px;border-radius:10px;
+  background:linear-gradient(160deg,#3a2c1c,#1f160e);
+  box-shadow:0 10px 24px var(--shadow), inset 0 0 0 2px var(--gold), inset 0 0 0 6px #1f160e;
+}
+.board-grid-wrap{display:grid;grid-template-columns:18px auto;grid-template-rows:auto 18px;}
+.ranks{display:grid;grid-template-rows:repeat(8, var(--sq-size));align-items:center;}
+.ranks span, .files span{
+  font-family:'Cinzel',serif;font-size:10px;color:var(--gold-pale);text-align:center;opacity:0.75;
+}
+.files{display:grid;grid-template-columns:repeat(8, var(--sq-size));padding-top:2px;}
+.board{
+  display:grid;grid-template-columns:repeat(8, var(--sq-size));grid-template-rows:repeat(8, var(--sq-size));
+  border:2px solid #17110a;
+}
+.sq{
+  all:unset;box-sizing:border-box;width:var(--sq-size);height:var(--sq-size);
+  display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;
+}
+.sq.light{background:var(--parchment);}
+.sq.dark{background:var(--parchment-dark);}
+.sq::after{ /* selection / highlight ring layer */
+  content:"";position:absolute;inset:2px;border-radius:6px;pointer-events:none;
+}
+.sq.selected::after{box-shadow:0 0 0 3px var(--gold), 0 0 10px 2px rgba(217,172,78,0.7) inset;}
+.sq.move-target::after{box-shadow:0 0 0 2px var(--verdigris);background:radial-gradient(circle, rgba(63,99,87,0.35) 22%, transparent 24%);}
+.sq.assault-target::after{box-shadow:0 0 0 3px var(--oxblood-bright);}
+.sq.capturable::after{
+  box-shadow:0 0 0 3px var(--oxblood-bright);
+  animation:pulseRing 1.1s ease-in-out infinite;
+}
+.sq.hint-src::after{box-shadow:0 0 0 3px var(--verdigris-bright);animation:pulseRing 1.1s ease-in-out infinite;}
+.sq.hint-dest::after{box-shadow:0 0 0 3px var(--verdigris-bright);border:2px dashed var(--verdigris-bright);}
+@keyframes pulseRing{0%,100%{opacity:1;}50%{opacity:0.35;}}
+@media (prefers-reduced-motion: reduce){
+  .sq.capturable::after,.sq.hint-src::after{animation:none;}
+}
+.cap-tag{
+  position:absolute;top:-1px;left:50%;transform:translate(-50%,-100%);
+  background:var(--oxblood-bright);color:#fbf1de;font-family:'Cinzel',serif;
+  font-size:8px;letter-spacing:0.05em;padding:2px 5px;border-radius:3px;white-space:nowrap;
+  box-shadow:0 1px 2px rgba(0,0,0,0.4);z-index:3;
+}
+
+/* ---------- pieces ---------- */
+.piece{
+  position:relative;width:82%;height:82%;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 3px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.25);
+}
+.piece.white{background:linear-gradient(155deg, var(--gold-bright), var(--gold) 60%, #8a621b);}
+.piece.black{background:linear-gradient(155deg, var(--oxblood-bright), var(--oxblood) 60%, #3c1013);}
+.piece.circle{border-radius:50%;}
+.piece.triangle{clip-path:polygon(50% 6%, 6% 94%, 94% 94%);}
+.piece.square{border-radius:5px;box-shadow:0 2px 3px rgba(0,0,0,0.35), inset 0 0 0 3px rgba(255,255,255,0.22), inset 0 0 0 5px rgba(0,0,0,0.18);}
+.piece.pyramid{
+  clip-path:polygon(30% 16%, 70% 16%, 94% 94%, 6% 94%);
+  background-image:repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0 3px, transparent 3px 13px);
+}
+.piece .plaque{
+  position:absolute;width:58%;height:58%;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #fbf3dc, #e7d6a8 70%, #cdb583);
+  border:1px solid rgba(43,33,24,0.5);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 2px rgba(0,0,0,0.3);
+}
+.piece .plaque span{
+  font-family:'Cinzel',serif;font-weight:700;color:var(--ink);
+  font-size:clamp(9px, 2.6vw, 15px);line-height:1;
+}
+.piece.mini-piece{width:24px;height:24px;box-shadow:none;}
+.mini-piece .plaque{border-width:1px;}
+.mini-piece .plaque span{font-size:9px;}
+
+/* ---------- log ---------- */
+.log-panel{
+  max-width:600px;width:100%;background:rgba(255,251,235,0.55);border:1px solid var(--parchment-darker);
+  border-radius:8px;padding:8px 12px;max-height:110px;overflow-y:auto;font-size:13px;color:var(--ink-soft);
+}
+.log-panel div{padding:2px 0;border-bottom:1px dashed rgba(94,26,32,0.12);}
+.log-panel div:last-child{border-bottom:none;color:var(--ink);font-weight:600;}
+
+/* ---------- modal ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(20,14,8,0.65);display:none;align-items:center;justify-content:center;
+  padding:20px;z-index:50;
+}
+.overlay.show{display:flex;}
+.modal{
+  background:var(--parchment);border:2px solid var(--ink);border-radius:10px;max-width:640px;width:100%;
+  max-height:86vh;overflow-y:auto;padding:22px 24px 26px;box-shadow:0 20px 50px rgba(0,0,0,0.5);
+  position:relative;
+}
+.modal h2{margin-top:0;font-size:24px;color:var(--ink);border-bottom:2px solid var(--gold);padding-bottom:8px;}
+.modal h3{font-size:16px;color:var(--oxblood);margin:18px 0 6px;}
+.modal p, .modal li{font-size:14.5px;line-height:1.5;color:var(--ink-soft);}
+.modal .close-x{position:absolute;top:10px;right:12px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink-soft);}
+.stratagem{
+  display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,0.35);border-radius:6px;
+  padding:8px 10px;margin-bottom:8px;
+}
+.stratagem .ex{display:flex;align-items:center;gap:4px;flex:none;}
+.stratagem .txt{font-size:14px;color:var(--ink-soft);}
+.stratagem .txt b{color:var(--ink);}
+.move-table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0;}
+.move-table td{padding:5px 8px;border-bottom:1px solid rgba(94,26,32,0.15);vertical-align:middle;}
+.move-table td:first-child{width:44px;}
+
+.victory-modal .modal{text-align:center;}
+.victory-modal h2{border:none;font-size:30px;}
+.victory-detail{font-size:15px;color:var(--ink-soft);margin:10px 0 18px;}
+.harmony-row{display:flex;justify-content:center;gap:8px;margin:12px 0;}
+
+footer.credit{max-width:920px;margin:20px auto 0;text-align:center;font-size:12px;color:var(--ink-soft);opacity:0.75;}
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <svg class="flourish" viewBox="0 0 520 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 13 C 80 2, 160 24, 260 13 S 440 2, 516 13" stroke="currentColor" stroke-width="1.4"/>
+    <circle cx="260" cy="13" r="4" fill="currentColor"/>
+    <circle cx="150" cy="13" r="2" fill="currentColor"/>
+    <circle cx="370" cy="13" r="2" fill="currentColor"/>
+  </svg>
+  <h1 class="title">Rithmomachia</h1>
+  <p class="subtitle">The Philosophers' Game &mdash; a battle of numbers, played since the schools of the 11th century</p>
+</div>
+
+<div class="onboard-banner" id="onboardBanner">
+  <b>New to Rithmomachia?</b> You play the Even army (gold) against the computer's Odd army (oxblood).
+  Open <b>How to Play</b> below for the full rules, or just press <b>Hint</b> any time you'd like the Court
+  Mathematician's advice.
+  <button class="onboard-close" id="onboardClose" aria-label="Dismiss">&times;</button>
+</div>
+
+<div class="toolbar">
+  <button class="btn" id="btnNewGame">New Game</button>
+  <button class="btn secondary" id="btnRules">How to Play</button>
+  <button class="btn secondary" id="btnHint">&#128161; Hint</button>
+  <button class="btn secondary" id="btnSound">&#128266; Sound</button>
+  <div class="seg" id="difficultySeg">
+    <button data-diff="apprentice" class="active">Apprentice</button>
+    <button data-diff="scholar">Scholar</button>
+  </div>
+</div>
+
+<div class="game-wrap">
+  <div class="tray" id="trayBlackCaptures">
+    <h3>Your Captures <span class="total" id="whiteScoreTotal">0</span></h3>
+    <div class="tray-items" id="trayWhiteItems"></div>
+  </div>
+
+  <div class="center-col">
+    <div class="status-bar" id="statusBar">
+      <span class="turn-dot white" id="turnDot"></span>
+      <span id="statusText">Your move &mdash; select one of your pieces.</span>
+    </div>
+
+    <div class="board-frame">
+      <div class="board-grid-wrap">
+        <div class="ranks" id="ranks"></div>
+        <div class="board" id="board"></div>
+        <div></div>
+        <div class="files" id="files"></div>
+      </div>
+    </div>
+
+    <button class="btn danger" id="btnEndTurn" style="display:none;">End Turn</button>
+    <div class="log-panel" id="logPanel"></div>
+  </div>
+
+  <div class="tray" id="trayWhiteCaptures">
+    <h3>Their Captures <span class="total" id="blackScoreTotal">0</span></h3>
+    <div class="tray-items" id="trayBlackItems"></div>
+  </div>
+</div>
+
+<footer class="credit">A streamlined edition for newcomers &mdash; simplified from the historical "Philosophers' Game" devised by medieval monks to teach Boethian number theory.</footer>
+
+<!-- Rules modal -->
+<div class="overlay" id="rulesOverlay">
+  <div class="modal">
+    <button class="close-x" id="rulesClose" aria-label="Close">&times;</button>
+    <h2>How to Play</h2>
+    <p><b>The goal:</b> capture every one of your opponent's pieces, or maneuver three of your pieces into a
+    mathematical <i>Harmony</i> on their side of the board. Whichever comes first wins.</p>
+
+    <h3>Pieces &amp; Movement</h3>
+    <table class="move-table">
+      <tr><td><div class="piece mini-piece white circle" style="width:26px;height:26px;"><div class="plaque"></div></div></td>
+          <td><b>Circle</b> &mdash; moves exactly 1 square, any direction.</td></tr>
+      <tr><td><div class="piece mini-piece white triangle" style="width:26px;height:26px;"><div class="plaque"></div></div></td>
+          <td><b>Triangle</b> &mdash; moves exactly 2 squares, any direction, in a straight line.</td></tr>
+      <tr><td><div class="piece mini-piece white square" style="width:26px;height:26px;"><div class="plaque"></div></div></td>
+          <td><b>Square</b> &mdash; moves exactly 3 squares, any direction, in a straight line.</td></tr>
+      <tr><td><div class="piece mini-piece white pyramid" style="width:26px;height:26px;"><div class="plaque"></div></div></td>
+          <td><b>Pyramid</b> &mdash; your champion piece; moves like a Circle, 1 square any direction.</td></tr>
+    </table>
+    <p>Pieces move the <i>exact</i> distance shown &mdash; never less &mdash; and cannot jump over other pieces.
+    White (gold, even numbers) always moves first.</p>
+
+    <h3>The Four Stratagems of Capture</h3>
+    <div class="stratagem">
+      <span class="txt"><b>Assault</b> &mdash; move directly onto an enemy piece of exactly equal value, the way a
+      chess piece captures. Rare, since your numbers are even and the enemy's are odd!</span>
+    </div>
+    <div class="stratagem">
+      <span class="txt"><b>Ambush</b> &mdash; surround an enemy piece with two or more of your own pieces
+      (touching it on any side, including diagonally) whose values <i>add up to</i> or <i>multiply to</i>
+      exactly its value. Example: a 5 and a 7 beside an enemy 12 (5+7=12) captures it.</span>
+    </div>
+    <div class="stratagem">
+      <span class="txt"><b>Siege</b> &mdash; if every open orthogonal side of an enemy piece (up/down/left/right)
+      is occupied by your pieces, it is captured &mdash; boxed in with nowhere to go.</span>
+    </div>
+    <div class="stratagem">
+      <span class="txt"><b>Sally</b> &mdash; a piece can strike at range along a row, column, or diagonal without
+      moving. Count the distance between the two pieces, including both squares. If your value &times; that
+      distance equals the enemy's value (or divides evenly into it), you capture from afar. Example: your 8 is
+      two squares from an enemy 16 (8&times;2=16) &mdash; captured.</span>
+    </div>
+    <p>After you move each turn, any Ambush, Siege, or Sally captures available on the board will glow
+    &mdash; tap a glowing enemy piece to claim it. You may take as many as are available before ending your turn.</p>
+
+    <h3>How to Win</h3>
+    <p><b>Elimination</b> &mdash; capture every one of your opponent's pieces.</p>
+    <p><b>Harmony (Triumph)</b> &mdash; get three of your own pieces evenly spaced in a straight line (row,
+    column, or diagonal), entirely on your <i>opponent's</i> side of the board, with values forming an
+    arithmetic sequence (like 2, 4, 6), a geometric sequence (like 4, 8, 16), or a harmonic sequence
+    (like 3, 4, 6). This was the medieval scholars' most celebrated way to win.</p>
+
+    <h3>A note on this edition</h3>
+    <p>The historical game includes multi-layered pyramids, several additional victory conditions, and regional
+    rule variants collected over eight centuries of play. This edition keeps the mathematics and the four
+    stratagems intact while simplifying piece counts and win conditions so newcomers can learn it in one sitting.</p>
+  </div>
+</div>
+
+<!-- Victory modal -->
+<div class="overlay victory-modal" id="victoryOverlay">
+  <div class="modal">
+    <h2 id="victoryTitle">Victory!</h2>
+    <div class="harmony-row" id="harmonyRow"></div>
+    <div class="victory-detail" id="victoryDetail"></div>
+    <button class="btn" id="btnPlayAgain">Play Again</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   RITHMOMACHIA ENGINE  (pure game logic, no DOM)
+   ============================================================ */
+var RithmoEngine = (function () {
+  "use strict";
+  var SIZE = 8;
+  var DIRS = [
+    [-1, 0], [1, 0], [0, -1], [0, 1],
+    [-1, -1], [-1, 1], [1, -1], [1, 1]
+  ];
+  var SHAPE_MOVE = { circle: 1, triangle: 2, square: 3, pyramid: 1 };
+
+  function initialState() {
+    var state = {
+      board: [], pieces: {}, turn: "white",
+      capturedByWhite: [], capturedByBlack: [], winner: null, winReason: null
+    };
+    for (var r = 0; r < SIZE; r++) state.board.push(new Array(SIZE).fill(null));
+    var whiteRow = [["circle",2],["triangle",8],["square",18],["pyramid",36],["square",24],["triangle",12],["circle",6],["circle",4]];
+    var blackRow = [["circle",3],["triangle",9],["square",21],["pyramid",45],["square",25],["triangle",15],["circle",5],["circle",7]];
+    whiteRow.forEach(function (p, c) { placePiece(state, "w"+(c+1), "white", p[0], p[1], 7, c); });
+    blackRow.forEach(function (p, c) { placePiece(state, "b"+(c+1), "black", p[0], p[1], 0, c); });
+    return state;
+  }
+  function placePiece(state, id, side, shape, value, r, c) {
+    var piece = { id:id, side:side, shape:shape, value:value, moveDist:SHAPE_MOVE[shape], r:r, c:c, alive:true };
+    state.pieces[id] = piece; state.board[r][c] = id;
+  }
+  function inBounds(r, c) { return r >= 0 && r < SIZE && c >= 0 && c < SIZE; }
+  function otherSide(side) { return side === "white" ? "black" : "white"; }
+  function pieceAt(state, r, c) { var id = state.board[r][c]; return id ? state.pieces[id] : null; }
+  function livingPieces(state, side) {
+    return Object.keys(state.pieces).map(function (id) { return state.pieces[id]; })
+      .filter(function (p) { return p.alive && p.side === side; });
+  }
+  function cloneState(state) { return JSON.parse(JSON.stringify(state)); }
+
+  function getLegalMoves(state, pieceId) {
+    var piece = state.pieces[pieceId]; var moves = [];
+    if (!piece || !piece.alive) return moves;
+    var d = piece.moveDist;
+    DIRS.forEach(function (dir) {
+      var dr = dir[0], dc = dir[1], blocked = false;
+      for (var step = 1; step < d; step++) {
+        var pr = piece.r + dr*step, pc = piece.c + dc*step;
+        if (!inBounds(pr, pc) || state.board[pr][pc] !== null) { blocked = true; break; }
+      }
+      if (blocked) return;
+      var tr = piece.r + dr*d, tc = piece.c + dc*d;
+      if (!inBounds(tr, tc)) return;
+      var occ = pieceAt(state, tr, tc);
+      if (!occ) moves.push({ r: tr, c: tc, type: "move" });
+      else if (occ.side !== piece.side && occ.value === piece.value) moves.push({ r: tr, c: tc, type: "assault" });
+    });
+    return moves;
+  }
+  function getAllLegalMoves(state, side) {
+    var out = [];
+    livingPieces(state, side).forEach(function (p) {
+      getLegalMoves(state, p.id).forEach(function (m) { out.push({ pieceId:p.id, toR:m.r, toC:m.c, type:m.type }); });
+    });
+    return out;
+  }
+  function applyMove(state, pieceId, toR, toC) {
+    var piece = state.pieces[pieceId]; var assaultedId = null;
+    var occ = pieceAt(state, toR, toC);
+    if (occ && occ.side !== piece.side) { assaultedId = occ.id; removePiece(state, occ.id, piece.side); }
+    state.board[piece.r][piece.c] = null;
+    piece.r = toR; piece.c = toC; state.board[toR][toC] = piece.id;
+    return { assaultedId: assaultedId };
+  }
+  function removePiece(state, targetId, capturingSide) {
+    var target = state.pieces[targetId];
+    if (!target || !target.alive) return;
+    target.alive = false; state.board[target.r][target.c] = null;
+    var tray = capturingSide === "white" ? state.capturedByWhite : state.capturedByBlack;
+    tray.push({ id: target.id, shape: target.shape, value: target.value, side: target.side });
+  }
+  function adjacentOwn(state, r, c, side) {
+    var out = [];
+    DIRS.forEach(function (dir) {
+      var nr = r + dir[0], nc = c + dir[1];
+      if (!inBounds(nr, nc)) return;
+      var p = pieceAt(state, nr, nc);
+      if (p && p.side === side) out.push(p);
+    });
+    return out;
+  }
+  function popcount(x) { var c = 0; while (x) { c += x & 1; x >>= 1; } return c; }
+  function describeAmbush(participants, target, isSum) {
+    var vals = participants.map(function (p) { return p.value; }).join(isSum ? " + " : " \u00D7 ");
+    return vals + " = " + target.value;
+  }
+  function findAmbushes(state, side) {
+    var results = [];
+    livingPieces(state, otherSide(side)).forEach(function (e) {
+      var own = adjacentOwn(state, e.r, e.c, side);
+      if (own.length < 2) return;
+      var n = own.length, bestSum = null, bestProduct = null;
+      for (var mask = 1; mask < (1 << n); mask++) {
+        var bits = popcount(mask);
+        if (bits < 2) continue;
+        var sum = 0, chosen = [];
+        for (var i = 0; i < n; i++) if (mask & (1 << i)) { sum += own[i].value; chosen.push(own[i]); }
+        if (sum === e.value && !bestSum) bestSum = chosen;
+        if (bits === 2 && chosen[0] && chosen[1] && chosen[0].value*chosen[1].value === e.value && !bestProduct) bestProduct = chosen;
+      }
+      var participants = bestSum || bestProduct;
+      if (participants) results.push({ targetId:e.id, type:"ambush", participants:participants.map(function(p){return p.id;}), detail:describeAmbush(participants, e, !!bestSum) });
+    });
+    return results;
+  }
+  function findSieges(state, side) {
+    var results = []; var orth = [[-1,0],[1,0],[0,-1],[0,1]];
+    livingPieces(state, otherSide(side)).forEach(function (e) {
+      var neighbors = orth.map(function (d) { return [e.r+d[0], e.c+d[1]]; }).filter(function (p) { return inBounds(p[0], p[1]); });
+      if (neighbors.length === 0) return;
+      var allOwn = neighbors.every(function (p) { var occ = pieceAt(state, p[0], p[1]); return occ && occ.side === side; });
+      if (allOwn) {
+        var ids = neighbors.map(function (p) { return pieceAt(state, p[0], p[1]).id; });
+        results.push({ targetId:e.id, type:"siege", participants:ids, detail:"Surrounded on all sides" });
+      }
+    });
+    return results;
+  }
+  function findSallies(state, side) {
+    var results = [];
+    var own = livingPieces(state, side), enemies = livingPieces(state, otherSide(side));
+    own.forEach(function (p) {
+      enemies.forEach(function (e) {
+        var dr = e.r-p.r, dc = e.c-p.c;
+        var sameRow = dr===0, sameCol = dc===0, sameDiag = Math.abs(dr)===Math.abs(dc);
+        if (!sameRow && !sameCol && !sameDiag) return;
+        var steps = Math.max(Math.abs(dr), Math.abs(dc));
+        if (steps === 0) return;
+        var stepR = dr===0?0:dr/steps, stepC = dc===0?0:dc/steps, blocked = false;
+        for (var s = 1; s < steps; s++) { var rr=p.r+stepR*s, cc=p.c+stepC*s; if (state.board[rr][cc] !== null) { blocked = true; break; } }
+        if (blocked) return;
+        var distance = steps + 1, hit = null;
+        if (p.value*distance === e.value) hit = p.value+" \u00D7 "+distance+" = "+e.value;
+        else if (distance>0 && p.value%distance===0 && p.value/distance===e.value) hit = p.value+" \u00F7 "+distance+" = "+e.value;
+        if (hit) results.push({ targetId:e.id, type:"sally", participants:[p.id], detail:hit });
+      });
+    });
+    return results;
+  }
+  function findCaptureOpportunities(state, side) {
+    var all = findAmbushes(state, side).concat(findSieges(state, side)).concat(findSallies(state, side));
+    var seen = {}, out = [];
+    all.forEach(function (opp) { if (seen[opp.targetId]) return; seen[opp.targetId] = true; out.push(opp); });
+    return out;
+  }
+  function applyCapture(state, side, targetId) { removePiece(state, targetId, side); }
+  function checkElimination(state) {
+    if (livingPieces(state, "black").length === 0) return "white";
+    if (livingPieces(state, "white").length === 0) return "black";
+    return null;
+  }
+  function opponentHalf(side, r) { return side === "white" ? r <= 3 : r >= 4; }
+  function checkTriumph(state, side) {
+    var pieces = livingPieces(state, side).filter(function (p) { return opponentHalf(side, p.r); });
+    var n = pieces.length;
+    for (var i=0;i<n;i++) for (var j=i+1;j<n;j++) for (var k=j+1;k<n;k++) {
+      var triple = orderCollinear(pieces[i], pieces[j], pieces[k]);
+      if (!triple) continue;
+      var a=triple[0].value,b=triple[1].value,c=triple[2].value;
+      var kind = progressionKind(a,b,c);
+      if (kind) return { pieces: triple.map(function(p){return p.id;}), kind:kind };
+    }
+    return null;
+  }
+  function orderCollinear(p1, p2, p3) {
+    var pts=[p1,p2,p3], perms=[[0,1,2],[0,2,1],[1,0,2]];
+    for (var pi=0; pi<perms.length; pi++) {
+      var a=pts[perms[pi][0]], b=pts[perms[pi][1]], c=pts[perms[pi][2]];
+      var dr1=b.r-a.r, dc1=b.c-a.c, dr2=c.r-b.r, dc2=c.c-b.c;
+      if (dr1===dr2 && dc1===dc2 && !(dr1===0 && dc1===0)) {
+        if (dr1===0 || dc1===0 || Math.abs(dr1)===Math.abs(dc1)) return [a,b,c];
+      }
+    }
+    return null;
+  }
+  function progressionKind(a,b,c) {
+    if (b-a === c-b) return "arithmetic";
+    if (b*b === a*c) return "geometric";
+    if (b*(a+c) === 2*a*c) return "harmonic";
+    return null;
+  }
+  function materialValue(state, side) { return livingPieces(state, side).reduce(function(s,p){return s+p.value;},0); }
+  function evaluate(state, side) {
+    var opp = otherSide(side);
+    var score = materialValue(state, side) - materialValue(state, opp);
+    livingPieces(state, side).forEach(function (p) { if (opponentHalf(side, p.r)) score += 1.5; });
+    var elim = checkElimination(state);
+    if (elim === side) score += 10000;
+    if (elim === opp) score -= 10000;
+    if (checkTriumph(state, side)) score += 5000;
+    return score;
+  }
+  function playMoveWithCaptures(state, move) {
+    applyMove(state, move.pieceId, move.toR, move.toC);
+    var side = state.pieces[move.pieceId].side, guard = 0;
+    while (guard++ < 20) {
+      var opps = findCaptureOpportunities(state, side);
+      if (opps.length === 0) break;
+      applyCapture(state, side, opps[0].targetId);
+      if (checkElimination(state)) break;
+    }
+    return state;
+  }
+  function sampleArray(arr, n) {
+    var copy = arr.slice();
+    for (var i=copy.length-1;i>0;i--) { var j=Math.floor(Math.random()*(i+1)); var t=copy[i]; copy[i]=copy[j]; copy[j]=t; }
+    return copy.slice(0, n);
+  }
+  function chooseAIMove(state, side, opts) {
+    opts = opts || {};
+    var depth = opts.depth || 2, randomness = opts.randomness || 0;
+    var moves = getAllLegalMoves(state, side);
+    if (moves.length === 0) return null;
+    var scored = moves.map(function (m) {
+      var s2 = cloneState(state);
+      playMoveWithCaptures(s2, m);
+      var score;
+      if (checkElimination(s2) || checkTriumph(s2, side)) score = evaluate(s2, side);
+      else if (depth > 1) {
+        var oppMoves = getAllLegalMoves(s2, otherSide(side));
+        var worst = -Infinity;
+        var sample = oppMoves.length > 40 ? sampleArray(oppMoves, 40) : oppMoves;
+        if (sample.length === 0) worst = 0;
+        else sample.forEach(function (om) {
+          var s3 = cloneState(s2); playMoveWithCaptures(s3, om);
+          var oppScore = evaluate(s3, otherSide(side));
+          if (oppScore > worst) worst = oppScore;
+        });
+        score = evaluate(s2, side) - worst*0.5;
+      } else score = evaluate(s2, side);
+      return { move: m, score: score };
+    });
+    scored.sort(function (a,b) { return b.score - a.score; });
+    var pool = scored;
+    if (randomness > 0 && scored.length > 1) {
+      var top = scored[0].score, margin = Math.max(2, Math.abs(top)*0.15);
+      pool = scored.filter(function (s) { return s.score >= top - margin; });
+      if (Math.random() < randomness && pool.length > 1) return pool[Math.floor(Math.random()*pool.length)].move;
+    }
+    return scored[0].move;
+  }
+
+  return {
+    SIZE:SIZE, DIRS:DIRS, SHAPE_MOVE:SHAPE_MOVE, initialState:initialState, cloneState:cloneState,
+    getLegalMoves:getLegalMoves, getAllLegalMoves:getAllLegalMoves, applyMove:applyMove, removePiece:removePiece,
+    findCaptureOpportunities:findCaptureOpportunities, findAmbushes:findAmbushes, findSieges:findSieges, findSallies:findSallies,
+    applyCapture:applyCapture, checkElimination:checkElimination, checkTriumph:checkTriumph, evaluate:evaluate,
+    playMoveWithCaptures:playMoveWithCaptures, chooseAIMove:chooseAIMove, livingPieces:livingPieces, otherSide:otherSide, pieceAt:pieceAt
+  };
+})();
+
+/* ============================================================
+   UI LAYER
+   ============================================================ */
+(function () {
+  "use strict";
+  var E = RithmoEngine;
+  var game = E.initialState();
+  var phase = "select"; // select | targeting | captures | post-move-none | ai-thinking | over
+  var selectedPieceId = null;
+  var legalMoves = [];
+  var captureOpps = [];
+  var capturableTargets = {}; // id -> type
+  var hintSrc = null, hintDest = null;
+  var soundOn = true;
+  var difficulty = "apprentice";
+  var autoEndTimer = null;
+
+  var boardEl = document.getElementById("board");
+  var ranksEl = document.getElementById("ranks");
+  var filesEl = document.getElementById("files");
+  var statusText = document.getElementById("statusText");
+  var turnDot = document.getElementById("turnDot");
+  var logPanel = document.getElementById("logPanel");
+  var btnEndTurn = document.getElementById("btnEndTurn");
+  var trayWhiteItems = document.getElementById("trayWhiteItems");
+  var trayBlackItems = document.getElementById("trayBlackItems");
+  var whiteScoreTotal = document.getElementById("whiteScoreTotal");
+  var blackScoreTotal = document.getElementById("blackScoreTotal");
+
+  var FILES = "abcdefgh";
+  function squareName(r, c) { return FILES[c] + (8 - r); }
+  function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function describePiece(p) { return capitalize(p.shape) + " " + p.value; }
+
+  /* ---------- board scaffolding (built once) ---------- */
+  function buildBoardDom() {
+    boardEl.innerHTML = "";
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 8; c++) {
+        var sq = document.createElement("button");
+        sq.className = "sq " + (((r + c) % 2 === 0) ? "light" : "dark");
+        sq.dataset.r = r; sq.dataset.c = c;
+        boardEl.appendChild(sq);
+      }
+    }
+    ranksEl.innerHTML = "";
+    for (var rr = 0; rr < 8; rr++) {
+      var s = document.createElement("span"); s.textContent = 8 - rr; ranksEl.appendChild(s);
+    }
+    filesEl.innerHTML = "";
+    for (var cc = 0; cc < 8; cc++) {
+      var f = document.createElement("span"); f.textContent = FILES[cc]; filesEl.appendChild(f);
+    }
+  }
+
+  function pieceEl(piece, mini) {
+    var div = document.createElement("div");
+    div.className = "piece " + piece.side + " " + piece.shape + (mini ? " mini-piece" : "");
+    var plaque = document.createElement("div"); plaque.className = "plaque";
+    var span = document.createElement("span"); span.textContent = piece.value;
+    plaque.appendChild(span); div.appendChild(plaque);
+    return div;
+  }
+
+  function renderBoard() {
+    var squares = boardEl.children;
+    for (var i = 0; i < squares.length; i++) {
+      var sq = squares[i];
+      var r = +sq.dataset.r, c = +sq.dataset.c;
+      sq.classList.remove("selected", "move-target", "assault-target", "capturable", "hint-src", "hint-dest");
+      var tag = sq.querySelector(".cap-tag");
+      if (tag) tag.remove();
+      // clear existing piece node (keep only one child besides potential tag)
+      Array.prototype.slice.call(sq.querySelectorAll(".piece")).forEach(function (n) { n.remove(); });
+
+      var id = game.board[r][c];
+      if (id) sq.appendChild(pieceEl(game.pieces[id], false));
+
+      if (selectedPieceId) {
+        var sp = game.pieces[selectedPieceId];
+        if (sp.r === r && sp.c === c) sq.classList.add("selected");
+      }
+      legalMoves.forEach(function (m) {
+        if (m.r === r && m.c === c) sq.classList.add(m.type === "assault" ? "assault-target" : "move-target");
+      });
+      if (id && capturableTargets[id]) {
+        sq.classList.add("capturable");
+        var t = document.createElement("div"); t.className = "cap-tag";
+        t.textContent = capturableTargets[id].toUpperCase();
+        sq.appendChild(t);
+      }
+      if (hintSrc && hintSrc.r === r && hintSrc.c === c) sq.classList.add("hint-src");
+      if (hintDest && hintDest.r === r && hintDest.c === c) sq.classList.add("hint-dest");
+    }
+  }
+
+  function renderTrays() {
+    trayWhiteItems.innerHTML = ""; trayBlackItems.innerHTML = "";
+    var wTotal = 0, bTotal = 0;
+    game.capturedByWhite.forEach(function (p) { wTotal += p.value; trayWhiteItems.appendChild(pieceEl(p, true)); });
+    game.capturedByBlack.forEach(function (p) { bTotal += p.value; trayBlackItems.appendChild(pieceEl(p, true)); });
+    whiteScoreTotal.textContent = wTotal;
+    blackScoreTotal.textContent = bTotal;
+  }
+
+  function setStatus(msg) { statusText.textContent = msg; }
+  function renderTurnDot() {
+    turnDot.className = "turn-dot " + (phase === "ai-thinking" ? "black" : "white");
+  }
+  function renderButtons() {
+    var showEnd = (phase === "captures" || phase === "post-move-none");
+    btnEndTurn.style.display = showEnd ? "inline-block" : "none";
+    document.getElementById("btnHint").disabled = (phase === "ai-thinking" || phase === "over" || phase === "targeting");
+  }
+  function renderAll() { renderBoard(); renderTrays(); renderTurnDot(); renderButtons(); }
+
+  function addLog(msg) {
+    var d = document.createElement("div"); d.textContent = msg;
+    logPanel.appendChild(d);
+    logPanel.scrollTop = logPanel.scrollHeight;
+    while (logPanel.children.length > 60) logPanel.removeChild(logPanel.firstChild);
+  }
+  function clearLog() { logPanel.innerHTML = ""; }
+
+  /* ---------- sound (synthesized, no external files) ---------- */
+  var actx = null;
+  function ctx() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); return actx; }
+  function tone(freq, dur, type, startDelay, gain) {
+    if (!soundOn) return;
+    try {
+      var c = ctx(); var t0 = c.currentTime + (startDelay || 0);
+      var osc = c.createOscillator(), g = c.createGain();
+      osc.type = type; osc.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(gain || 0.15, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g); g.connect(c.destination);
+      osc.start(t0); osc.stop(t0 + dur + 0.02);
+    } catch (e) { /* audio unavailable, ignore */ }
+  }
+  function playSound(kind) {
+    if (kind === "move") { tone(300,0.09,"triangle"); tone(220,0.09,"triangle",0.03,0.08); }
+    else if (kind === "assault") { tone(180,0.15,"sawtooth",0,0.18); tone(90,0.2,"square",0.05,0.15); }
+    else if (kind === "capture") { tone(500,0.1,"square",0,0.15); tone(320,0.16,"square",0.06,0.12); }
+    else if (kind === "hint") { tone(880,0.12,"sine",0,0.1); tone(1320,0.14,"sine",0.08,0.08); }
+    else if (kind === "win") { [523,659,784,1046].forEach(function(f,i){tone(f,0.25,"triangle",i*0.14,0.15);}); }
+    else if (kind === "lose") { [392,349,311,262].forEach(function(f,i){tone(f,0.32,"sine",i*0.17,0.12);}); }
+  }
+
+  /* ---------- selection / moves ---------- */
+  function clearSelection() { selectedPieceId = null; legalMoves = []; }
+  function clearHighlights() { capturableTargets = {}; hintSrc = null; hintDest = null; }
+
+  function selectPiece(id) {
+    clearHighlights();
+    selectedPieceId = id;
+    legalMoves = E.getLegalMoves(game, id);
+    phase = "targeting";
+    var p = game.pieces[id];
+    setStatus(describePiece(p) + " selected at " + squareName(p.r,p.c) + " — choose a destination (" + legalMoves.length + " legal " + (legalMoves.length===1?"move":"moves") + ").");
+    renderAll();
+  }
+
+  function highlightCaptureOpps() {
+    capturableTargets = {};
+    captureOpps.forEach(function (o) { capturableTargets[o.targetId] = o.type; });
+    renderBoard();
+  }
+
+  function scheduleAutoEndTurn() {
+    clearTimeout(autoEndTimer);
+    autoEndTimer = setTimeout(function () { endTurn(); }, 900);
+  }
+  function clearAutoEndTimer() { clearTimeout(autoEndTimer); autoEndTimer = null; }
+
+  function doHumanMove(pieceId, r, c) {
+    clearAutoEndTimer();
+    var piece = game.pieces[pieceId];
+    var fromN = squareName(piece.r, piece.c);
+    var result = E.applyMove(game, pieceId, r, c);
+    var toN = squareName(r, c);
+    if (result.assaultedId) {
+      var target = game.pieces[result.assaultedId];
+      playSound("assault");
+      addLog("\u2694 Assault — your " + describePiece(piece) + " struck down their " + describePiece(target) + " at " + toN + ".");
+    } else {
+      playSound("move");
+      addLog("Your " + describePiece(piece) + " advanced from " + fromN + " to " + toN + ".");
+    }
+    clearSelection(); clearHighlights();
+    if (checkGameOverAndMaybeStop()) return;
+    captureOpps = E.findCaptureOpportunities(game, "white");
+    if (captureOpps.length > 0) {
+      phase = "captures";
+      highlightCaptureOpps();
+      setStatus("Capture opportunities glow on the board — tap one to strike, or End Turn.");
+    } else {
+      phase = "post-move-none";
+      setStatus("No further captures available — passing to the opponent shortly.");
+      scheduleAutoEndTurn();
+    }
+    renderAll();
+  }
+
+  function doCapture(targetId) {
+    clearAutoEndTimer();
+    var opp = captureOpps.find(function (o) { return o.targetId === targetId; });
+    if (!opp) return;
+    var target = game.pieces[targetId];
+    E.applyCapture(game, "white", targetId);
+    playSound("capture");
+    addLog(capitalize(opp.type) + "! Your pieces (" + opp.detail + ") captured their " + describePiece(target) + ".");
+    clearHighlights();
+    renderAll();
+    if (checkGameOverAndMaybeStop()) return;
+    captureOpps = E.findCaptureOpportunities(game, "white");
+    if (captureOpps.length > 0) {
+      highlightCaptureOpps();
+      setStatus("More captures available — tap another, or End Turn.");
+    } else {
+      setStatus("No further captures available.");
+      scheduleAutoEndTurn();
+    }
+  }
+
+  function endTurn() {
+    clearAutoEndTimer();
+    clearHighlights();
+    if (checkGameOverAndMaybeStop()) return;
+    var tri = E.checkTriumph(game, "white");
+    if (tri) { declareWin("white", "triumph", tri); return; }
+    game.turn = "black";
+    phase = "ai-thinking";
+    selectedPieceId = null; legalMoves = []; captureOpps = [];
+    setStatus("The opponent ponders its move...");
+    renderAll();
+    setTimeout(runAITurn, 650 + Math.random() * 450);
+  }
+
+  function runAITurn() {
+    var depth = difficulty === "scholar" ? 2 : 1;
+    var randomness = difficulty === "scholar" ? 0.08 : 0.35;
+    var move = E.chooseAIMove(game, "black", { depth: depth, randomness: randomness });
+    if (!move) { addLog("The opponent has no legal moves and forfeits the turn."); finishAITurn(); return; }
+    var piece = game.pieces[move.pieceId];
+    var fromN = squareName(piece.r, piece.c);
+    var res = E.applyMove(game, move.pieceId, move.toR, move.toC);
+    var toN = squareName(move.toR, move.toC);
+    if (res.assaultedId) {
+      var target = game.pieces[res.assaultedId];
+      playSound("assault");
+      addLog("\u2694 The opponent's " + describePiece(piece) + " assaulted your " + describePiece(target) + " at " + toN + ".");
+    } else {
+      playSound("move");
+      addLog("The opponent's " + describePiece(piece) + " moved from " + fromN + " to " + toN + ".");
+    }
+    renderAll();
+    if (checkGameOverAndMaybeStop()) return;
+    executeAICapturesSequentially();
+  }
+
+  function executeAICapturesSequentially() {
+    var opps = E.findCaptureOpportunities(game, "black");
+    if (opps.length === 0) { finishAITurn(); return; }
+    var opp = opps[0];
+    var target = game.pieces[opp.targetId];
+    setTimeout(function () {
+      E.applyCapture(game, "black", opp.targetId);
+      playSound("capture");
+      addLog(capitalize(opp.type) + "! The opponent's pieces (" + opp.detail + ") captured your " + describePiece(target) + ".");
+      renderAll();
+      if (checkGameOverAndMaybeStop()) return;
+      executeAICapturesSequentially();
+    }, 550);
+  }
+
+  function finishAITurn() {
+    var tri = E.checkTriumph(game, "black");
+    if (tri) { declareWin("black", "triumph", tri); return; }
+    game.turn = "white"; phase = "select";
+    setStatus("Your move — select one of your pieces.");
+    renderAll();
+  }
+
+  function checkGameOverAndMaybeStop() {
+    var winnerSide = E.checkElimination(game);
+    if (winnerSide) { declareWin(winnerSide, "elimination", null); return true; }
+    return false;
+  }
+
+  /* ---------- win handling ---------- */
+  function declareWin(side, reason, detail) {
+    phase = "over";
+    clearAutoEndTimer();
+    clearHighlights(); clearSelection();
+    renderAll();
+    var humanWon = side === "white";
+    playSound(humanWon ? "win" : "lose");
+    var title = document.getElementById("victoryTitle");
+    var detailEl = document.getElementById("victoryDetail");
+    var harmonyRow = document.getElementById("harmonyRow");
+    harmonyRow.innerHTML = "";
+    if (reason === "elimination") {
+      title.textContent = humanWon ? "Victory by Elimination!" : "Defeat by Elimination";
+      detailEl.textContent = humanWon
+        ? "You have captured every piece in the opponent's army. Well fought!"
+        : "The opponent has captured your entire army. The board falls silent.";
+      addLog(humanWon ? "You have won by total elimination of the enemy army!" : "You have been eliminated. The opponent wins.");
+    } else {
+      title.textContent = humanWon ? "Victory by Harmony!" : "The Opponent Achieves Harmony";
+      var kindName = detail.kind.charAt(0).toUpperCase() + detail.kind.slice(1);
+      detailEl.textContent = (humanWon ? "You" : "The opponent") + " arranged three pieces into a " + kindName + " progression on enemy territory — the rarest and most celebrated victory in the Philosophers' Game.";
+      detail.pieces.forEach(function (id) {
+        var p = game.pieces[id];
+        harmonyRow.appendChild(pieceEl(p, true));
+      });
+      addLog((humanWon ? "You have" : "The opponent has") + " achieved a " + detail.kind + " Harmony — victory!");
+    }
+    document.getElementById("victoryOverlay").classList.add("show");
+  }
+
+  /* ---------- hint ---------- */
+  function giveHint() {
+    if (phase === "select") {
+      var best = E.chooseAIMove(game, "white", { depth: 2, randomness: 0 });
+      if (!best) { setStatus("No moves available to suggest."); return; }
+      clearHighlights();
+      hintSrc = { r: game.pieces[best.pieceId].r, c: game.pieces[best.pieceId].c };
+      hintDest = { r: best.toR, c: best.toC };
+      var piece = game.pieces[best.pieceId];
+      var s2 = E.cloneState(game);
+      E.applyMove(s2, best.pieceId, best.toR, best.toC);
+      var opps = E.findCaptureOpportunities(s2, "white");
+      var msg = "The Court Mathematician suggests: move your " + describePiece(piece) + " to " + squareName(best.toR, best.toC) + ".";
+      if (best.type === "assault") msg += " This strikes an equal-valued foe by Assault!";
+      else if (opps.length > 0) msg += " This sets up a " + opps[0].type + " on their " + describePiece(game.pieces[opps[0].targetId]) + " (" + opps[0].detail + ").";
+      playSound("hint");
+      setStatus(msg);
+      renderBoard();
+    } else if ((phase === "captures" || phase === "post-move-none") && captureOpps.length > 0) {
+      var sorted = captureOpps.slice().sort(function (a, b) { return game.pieces[b.targetId].value - game.pieces[a.targetId].value; });
+      var b = sorted[0];
+      var target = game.pieces[b.targetId];
+      playSound("hint");
+      setStatus("The Court Mathematician suggests: claim their " + describePiece(target) + " first, by " + b.type + " (" + b.detail + ").");
+    } else {
+      playSound("hint");
+      setStatus("No advice needed right now — finish your current action, then ask again.");
+    }
+  }
+
+  /* ---------- events ---------- */
+  boardEl.addEventListener("click", function (e) {
+    var btn = e.target.closest(".sq");
+    if (!btn) return;
+    onSquareClick(+btn.dataset.r, +btn.dataset.c);
+  });
+
+  function onSquareClick(r, c) {
+    if (phase === "ai-thinking" || phase === "over") return;
+    var id = game.board[r][c];
+    if (phase === "select") {
+      if (id && game.pieces[id].side === "white") selectPiece(id);
+      return;
+    }
+    if (phase === "targeting") {
+      if (id === selectedPieceId) { clearSelection(); clearHighlights(); phase = "select"; setStatus("Select one of your pieces to move."); renderAll(); return; }
+      if (id && game.pieces[id].side === "white") { selectPiece(id); return; }
+      var mv = legalMoves.find(function (m) { return m.r === r && m.c === c; });
+      if (mv) doHumanMove(selectedPieceId, r, c);
+      return;
+    }
+    if (phase === "captures" || phase === "post-move-none") {
+      if (id && capturableTargets[id]) doCapture(id);
+      return;
+    }
+  }
+
+  document.getElementById("btnEndTurn").addEventListener("click", endTurn);
+  document.getElementById("btnHint").addEventListener("click", giveHint);
+  document.getElementById("btnSound").addEventListener("click", function () {
+    soundOn = !soundOn;
+    this.textContent = (soundOn ? "\u{1F50A} Sound" : "\u{1F507} Sound");
+    if (soundOn) tone(660, 0.08, "sine", 0, 0.1);
+  });
+  document.getElementById("btnNewGame").addEventListener("click", function () {
+    var inProgress = Object.keys(game.pieces).some(function (id) {
+      var p = game.pieces[id];
+      return !p.alive || p.r !== (p.side === "white" ? 7 : 0);
+    });
+    if (inProgress && !confirm("Start a new game? Your current match will be lost.")) return;
+    resetGame();
+  });
+  document.getElementById("btnPlayAgain").addEventListener("click", function () {
+    document.getElementById("victoryOverlay").classList.remove("show");
+    resetGame();
+  });
+
+  document.getElementById("btnRules").addEventListener("click", function () { document.getElementById("rulesOverlay").classList.add("show"); });
+  document.getElementById("rulesClose").addEventListener("click", function () { document.getElementById("rulesOverlay").classList.remove("show"); });
+  document.getElementById("rulesOverlay").addEventListener("click", function (e) { if (e.target === this) this.classList.remove("show"); });
+
+  document.getElementById("onboardClose").addEventListener("click", function () {
+    document.getElementById("onboardBanner").classList.add("hidden");
+  });
+
+  var difficultySeg = document.getElementById("difficultySeg");
+  difficultySeg.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-diff]");
+    if (!b) return;
+    difficulty = b.dataset.diff;
+    Array.prototype.forEach.call(difficultySeg.children, function (c) { c.classList.toggle("active", c === b); });
+  });
+
+  function resetGame() {
+    clearAutoEndTimer();
+    game = E.initialState();
+    phase = "select";
+    clearSelection(); clearHighlights();
+    captureOpps = [];
+    clearLog();
+    addLog("A new game begins. You play the Even army (gold); the opponent plays the Odd army (oxblood).");
+    setStatus("Your move — select one of your pieces.");
+    renderAll();
+  }
+
+  /* ---------- init ---------- */
+  buildBoardDom();
+  addLog("A new game begins. You play the Even army (gold); the opponent plays the Odd army (oxblood).");
+  renderAll();
+})();
+</script>
+</body>
+</html>
