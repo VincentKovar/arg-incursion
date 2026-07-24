@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ENTHOUSIASTS :: DECODER</title>
+<style>
+  :root{
+    --bg: #050705;
+    --bg-panel: #0a0f0a;
+    --green: #33ff66;
+    --green-dim: #1c9940;
+    --green-faint: #0f4d24;
+    --spark: #aaffcc;
+    --amber: #ffb020;
+    --red: #ff3355;
+    --text: #cdf5d8;
+    --mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+    height:100%;
+    overflow-x:hidden;
+  }
+
+  body{
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+
+  /* ---------- scanline / crt overlay ---------- */
+  .crt{
+    pointer-events:none;
+    position:fixed; inset:0;
+    z-index:50;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,0.12) 3px
+    );
+    mix-blend-mode:overlay;
+    opacity:0.5;
+  }
+  .vignette{
+    pointer-events:none;
+    position:fixed; inset:0;
+    z-index:49;
+    box-shadow: inset 0 0 18vw 2vw rgba(0,0,0,0.85);
+  }
+
+  /* ================= TOP BAR ================= */
+  .topbar{
+    position:sticky; top:0; z-index:40;
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+    height:52px;
+    padding:0 0.75rem;
+    background:linear-gradient(to bottom, #0b120b, #060906 90%);
+    border-bottom:1px solid var(--green-faint);
+    box-shadow:0 1px 12px rgba(51,255,102,0.08);
+  }
+  .topbar .mark{
+    width:40px; height:40px;
+    flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .topbar .mark svg{ display:block; }
+  .topbar .wordmark{
+    font-size:0.72rem;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--green);
+    line-height:1.15;
+    white-space:nowrap;
+  }
+  .topbar .wordmark small{
+    display:block;
+    font-size:0.58rem;
+    letter-spacing:0.18em;
+    color:var(--green-dim);
+    margin-top:1px;
+  }
+  .topbar .status{
+    margin-left:auto;
+    font-size:0.62rem;
+    letter-spacing:0.1em;
+    color:var(--green-dim);
+    text-align:right;
+    white-space:nowrap;
+  }
+  .topbar .status .dot{
+    display:inline-block;
+    width:6px; height:6px;
+    border-radius:50%;
+    background:var(--green-dim);
+    margin-right:5px;
+    vertical-align:middle;
+  }
+  .topbar .status.live .dot{
+    background:var(--green);
+    box-shadow:0 0 6px var(--green);
+    animation:pulse 1.4s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.35; }
+  }
+
+  /* ================= MAIN ================= */
+  main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:1rem 0.85rem 2.5rem;
+    max-width:520px;
+    margin:0 auto;
+    width:100%;
+  }
+
+  .lede{
+    width:100%;
+    margin:0.75rem 0 1rem;
+  }
+  .lede .tag{
+    font-size:0.62rem;
+    letter-spacing:0.2em;
+    text-transform:uppercase;
+    color:var(--green-dim);
+    margin:0 0 0.35rem;
+  }
+  .lede h1{
+    font-size:1.05rem;
+    font-weight:500;
+    letter-spacing:0.01em;
+    margin:0 0 0.5rem;
+    color:var(--text);
+  }
+  .lede p{
+    font-size:0.78rem;
+    line-height:1.55;
+    color:#8fd8a3;
+    margin:0;
+  }
+
+  /* ---------- viewport ---------- */
+  .viewport-wrap{
+    position:relative;
+    width:100%;
+    aspect-ratio: 3 / 4;
+    border:1px solid var(--green-faint);
+    background:#020402;
+    overflow:hidden;
+    border-radius:2px;
+  }
+  video{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    filter:contrast(1.35) saturate(0) brightness(1.05);
+    opacity:0.92;
+  }
+  canvas.hidden-canvas{ display:none; }
+
+  .reticle{
+    position:absolute; inset:0;
+    pointer-events:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .reticle .frame{
+    width:82%;
+    height:46%;
+    border:1px solid rgba(51,255,102,0.55);
+    position:relative;
+  }
+  .reticle .frame::before,
+  .reticle .frame::after,
+  .reticle .frame b::before,
+  .reticle .frame b::after{
+    content:'';
+    position:absolute;
+    width:16px; height:16px;
+    border-color:var(--green);
+    border-style:solid;
+  }
+  .reticle .frame::before{ top:-1px; left:-1px; border-width:2px 0 0 2px; }
+  .reticle .frame::after{ top:-1px; right:-1px; border-width:2px 2px 0 0; }
+  .reticle .frame b::before{ bottom:-1px; left:-1px; border-width:0 0 2px 2px; }
+  .reticle .frame b::after{ bottom:-1px; right:-1px; border-width:0 2px 2px 0; }
+
+  .scanbeam{
+    position:absolute;
+    left:0; right:0; top:0;
+    height:2px;
+    background:linear-gradient(to right, transparent, var(--green) 20%, var(--green) 80%, transparent);
+    box-shadow:0 0 10px var(--green);
+    animation:sweep 2.1s linear infinite;
+    opacity:0;
+  }
+  .viewport-wrap.active .scanbeam{ opacity:0.85; }
+  @keyframes sweep{
+    0%{ transform:translateY(0%); }
+    100%{ transform:translateY(39vh); }
+  }
+
+  .viewport-idle{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:0.6rem;
+    color:var(--green-dim);
+    font-size:0.68rem;
+    letter-spacing:0.12em;
+    text-align:center;
+    padding:1.5rem;
+  }
+  .viewport-idle svg{ opacity:0.5; }
+
+  /* ---------- row status readout ---------- */
+  .readout{
+    width:100%;
+    margin-top:0.65rem;
+    font-size:0.68rem;
+    letter-spacing:0.04em;
+    color:var(--green-dim);
+    min-height:1.1rem;
+    display:flex;
+    align-items:center;
+    gap:0.4rem;
+  }
+  .readout .caret{
+    display:inline-block;
+    width:7px; height:12px;
+    background:var(--green);
+    animation:blink 1s steps(1) infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .row-tracker{
+    display:flex;
+    gap:4px;
+    margin-top:0.4rem;
+  }
+  .row-tracker .seg{
+    flex:1;
+    height:4px;
+    background:var(--green-faint);
+    border-radius:1px;
+    transition:background 0.25s ease;
+  }
+  .row-tracker .seg.got{
+    background:var(--green);
+    box-shadow:0 0 6px var(--green);
+  }
+
+  /* ---------- controls ---------- */
+  .controls{
+    width:100%;
+    display:flex;
+    gap:0.6rem;
+    margin-top:0.9rem;
+  }
+  button{
+    font-family:var(--mono);
+    cursor:pointer;
+  }
+  .btn{
+    flex:1;
+    background:transparent;
+    border:1px solid var(--green-dim);
+    color:var(--green);
+    padding:0.75rem 0.5rem;
+    font-size:0.72rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    border-radius:2px;
+    transition:all 0.15s ease;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn.primary{
+    background:var(--green-faint);
+    border-color:var(--green);
+    color:#eafff0;
+  }
+  .btn.stop{
+    border-color:#7a2334;
+    color:#ff7a91;
+  }
+  .btn:disabled{ opacity:0.35; cursor:default; }
+
+  .secondary-row{
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    margin-top:0.6rem;
+    gap:0.6rem;
+  }
+  .link-btn{
+    background:none;
+    border:none;
+    color:var(--green-dim);
+    font-size:0.65rem;
+    letter-spacing:0.08em;
+    text-decoration:underline;
+    text-underline-offset:3px;
+    padding:0.3rem 0;
+  }
+
+  input[type=file]{ display:none; }
+
+  /* ---------- manual entry ---------- */
+  .manual-panel{
+    width:100%;
+    margin-top:0.75rem;
+    border:1px solid var(--green-faint);
+    padding:0.75rem;
+    display:none;
+    border-radius:2px;
+    background:rgba(15,77,36,0.06);
+  }
+  .manual-panel.open{ display:block; }
+  .manual-panel label{
+    display:block;
+    font-size:0.6rem;
+    letter-spacing:0.12em;
+    color:var(--green-dim);
+    margin-bottom:0.4rem;
+    text-transform:uppercase;
+  }
+  .manual-panel textarea{
+    width:100%;
+    background:#020402;
+    border:1px solid var(--green-faint);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:0.75rem;
+    padding:0.5rem;
+    resize:vertical;
+    min-height:60px;
+    border-radius:2px;
+  }
+  .manual-panel .btn{ margin-top:0.5rem; }
+
+  /* ---------- output terminal ---------- */
+  .output{
+    width:100%;
+    margin-top:1.1rem;
+    border:1px solid var(--green-dim);
+    border-radius:2px;
+    background:#020602;
+    display:none;
+    overflow:hidden;
+  }
+  .output.open{ display:block; }
+  .output .out-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0.45rem 0.65rem;
+    border-bottom:1px solid var(--green-faint);
+    background:rgba(51,255,102,0.05);
+  }
+  .output .out-head span{
+    font-size:0.62rem;
+    letter-spacing:0.14em;
+    color:var(--green);
+    text-transform:uppercase;
+  }
+  .output .copy-btn{
+    background:none;
+    border:1px solid var(--green-faint);
+    color:var(--green-dim);
+    font-size:0.6rem;
+    letter-spacing:0.08em;
+    padding:0.25rem 0.5rem;
+    border-radius:2px;
+  }
+  .output .copy-btn:active{ background:var(--green-faint); color:var(--text); }
+  .output pre{
+    margin:0;
+    padding:0.85rem 0.75rem 1rem;
+    font-size:0.85rem;
+    line-height:1.5;
+    color:var(--spark);
+    white-space:pre-wrap;
+    word-break:break-word;
+    min-height:1.4rem;
+  }
+  .output .meta{
+    padding:0 0.75rem 0.75rem;
+    font-size:0.6rem;
+    color:var(--green-dim);
+    letter-spacing:0.06em;
+  }
+
+  .error-msg{
+    width:100%;
+    margin-top:0.75rem;
+    border:1px solid #7a2334;
+    color:#ff8fa1;
+    background:rgba(255,51,85,0.06);
+    padding:0.6rem 0.7rem;
+    font-size:0.7rem;
+    line-height:1.5;
+    border-radius:2px;
+    display:none;
+  }
+  .error-msg.open{ display:block; }
+
+  .history{
+    width:100%;
+    margin-top:1.4rem;
+  }
+  .history .h-title{
+    font-size:0.6rem;
+    letter-spacing:0.16em;
+    color:var(--green-dim);
+    text-transform:uppercase;
+    margin-bottom:0.5rem;
+    border-bottom:1px solid var(--green-faint);
+    padding-bottom:0.35rem;
+  }
+  .history .h-item{
+    font-size:0.68rem;
+    color:#7fbf90;
+    padding:0.35rem 0;
+    border-bottom:1px dashed rgba(51,255,102,0.12);
+    word-break:break-word;
+  }
+  .history .h-item .h-time{
+    display:block;
+    color:var(--green-faint);
+    font-size:0.58rem;
+    margin-top:2px;
+  }
+
+  footer{
+    text-align:center;
+    padding:1.2rem 1rem 1.6rem;
+    font-size:0.56rem;
+    letter-spacing:0.14em;
+    color:var(--green-faint);
+    text-transform:uppercase;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .scanbeam, .topbar .status.live .dot, .readout .caret{ animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="crt"></div>
+<div class="vignette"></div>
+
+<!-- ================= TOP BAR ================= -->
+<div class="topbar">
+  <div class="mark">
+    <svg id="markSvg" width="40" height="40" viewBox="0 0 260 180" style="overflow:visible;">
+      <polyline id="infline" fill="none" stroke="#33ff66" stroke-width="4"/>
+      <circle id="spark" cx="130" cy="90" r="4" fill="#aaffcc"/>
+    </svg>
+  </div>
+  <div class="wordmark">
+    ENTHOUSIASTS
+    <small>codablock&#8209;f decoder</small>
+  </div>
+  <div class="status" id="statusIndicator"><span class="dot"></span><span id="statusText">idle</span></div>
+</div>
+
+<main>
+
+  <div class="lede">
+    <p class="tag">// field instrument</p>
+    <h1>Point your camera at the mark.</h1>
+    <p>Some windows aren't windows. Frame the code steadily — Codablock&#8209;F reads in rows, and every row has to resolve before the message does.</p>
+  </div>
+
+  <div class="viewport-wrap" id="viewportWrap">
+    <video id="video" playsinline muted></video>
+    <canvas class="hidden-canvas" id="canvas"></canvas>
+    <div class="scanbeam"></div>
+    <div class="reticle"><div class="frame"><b></b></div></div>
+    <div class="viewport-idle" id="viewportIdle">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1c9940" stroke-width="1.4">
+        <rect x="3" y="6" width="18" height="12" rx="1"/>
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M8 6l1.2-2h5.6L16 6"/>
+      </svg>
+      <span>camera inactive</span>
+    </div>
+  </div>
+
+  <div class="readout" id="readout"><span class="caret"></span></div>
+  <div class="row-tracker" id="rowTracker"></div>
+
+  <div class="controls">
+    <button class="btn primary" id="startBtn">Start Scan</button>
+    <button class="btn stop" id="stopBtn" style="display:none;">Stop</button>
+  </div>
+
+  <div class="secondary-row">
+    <button class="link-btn" id="uploadTrigger">upload a photo instead</button>
+    <button class="link-btn" id="manualTrigger">enter code manually</button>
+  </div>
+  <input type="file" id="uploadInput" accept="image/*">
+
+  <div class="manual-panel" id="manualPanel">
+    <label>raw row data (one row per line, or full symbol text)</label>
+    <textarea id="manualText" placeholder="paste or type here"></textarea>
+    <button class="btn primary" id="manualSubmit">Decode Input</button>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="output" id="output">
+    <div class="out-head">
+      <span>decoded transmission</span>
+      <button class="copy-btn" id="copyBtn">copy</button>
+    </div>
+    <pre id="outputText"></pre>
+    <div class="meta" id="outputMeta"></div>
+  </div>
+
+  <div class="history" id="historySection" style="display:none;">
+    <div class="h-title">recent scans</div>
+    <div id="historyList"></div>
+  </div>
+
+</main>
+
+<footer>signal persists // frame steady // hold still</footer>
+
+<script>
+/* ============================================================
+   INFINITY MARK ANIMATION (top bar, scaled down)
+   ============================================================ */
+(function(){
+  var N = 100, scale = 42;
+  var infPts = [];
+  for (var i = 0; i <= N; i++) {
+    var t = (i / N) * 2 * Math.PI;
+    infPts.push([scale * Math.sin(t), scale * Math.sin(t) * Math.cos(t), 0]);
+  }
+  var rightCenter = [26, 0, 0];
+  var a = 0, b = 0, t2 = 0;
+  var infline = document.getElementById('infline');
+  var spark = document.getElementById('spark');
+
+  function proj(p, cosA, sinA, cosB, sinB) {
+    var x = p[0], y = p[1], z = p[2];
+    var y1 = y * cosA - z * sinA, z1 = y * sinA + z * cosA;
+    var x2 = x * cosB - z1 * sinB, z2 = x * sinB + z1 * cosB;
+    var s = 90 / (140 - z2);
+    return [130 + x2 * s, 90 + y1 * s];
+  }
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function tick() {
+    a += 0.02; b += 0.013;
+    var cosA = Math.cos(a), sinA = Math.sin(a);
+    var cosB = Math.cos(b), sinB = Math.sin(b);
+    var str = '';
+    for (var i = 0; i < infPts.length; i++) {
+      var p = proj(infPts[i], cosA, sinA, cosB, sinB);
+      str += p[0].toFixed(1) + ',' + p[1].toFixed(1) + ' ';
+    }
+    infline.setAttribute('points', str);
+    var sp = proj(rightCenter, cosA, sinA, cosB, sinB);
+    spark.setAttribute('cx', sp[0]);
+    spark.setAttribute('cy', sp[1]);
+    t2 += 0.06;
+    var s2 = 1 + 0.4 * Math.sin(t2);
+    spark.setAttribute('r', 3.5 * s2);
+    spark.setAttribute('opacity', 0.6 + 0.4 * Math.sin(t2));
+    if (!reduceMotion) requestAnimationFrame(tick);
+  }
+  tick();
+})();
+
+/* ============================================================
+   CODE 128 / CODABLOCK-F DECODING ENGINE
+   ============================================================
+   Codablock-F rows are Code 128 symbols. Each row:
+     Start (A/B/C) + row-indicator char + data chars + checksum + Stop
+   Row indicator character (in code-128 table position) encodes the row
+   number and is used to reassemble rows into the full message.
+   This engine:
+     1. Takes a binarized image (or manual bar-width input)
+     2. Locates candidate barcode rows
+     3. Decodes each row as Code 128
+     4. Strips row-indicator + checksum, reassembles by row order
+   Because live in-browser bar-width extraction from arbitrary photos
+   is unreliable without a native decoder library, this engine accepts
+   two input paths that both funnel into the same Code128/Codablock-F
+   parser:
+     A) Text representation of scanned rows (from image analysis pass)
+     B) Manual paste of row text (fallback / accessibility path)
+============================================================ */
+
+// Code 128 character set (value -> pattern width string, code A/B/C symbol)
+// Using standard Code 128 symbol table (subset needed for decode-by-pattern).
+var CODE128_PATTERNS = [
+"212222","222122","222221","121223","121322","131222","122213","122312","132212","221213",
+"221312","231212","112232","122132","122231","113222","123122","123221","223211","221132",
+"221231","213212","223112","312131","311222","321122","321221","312212","322112","322211",
+"212123","212321","232121","111323","131123","131321","112313","132113","132311","211313",
+"231113","231311","112133","112331","132131","113123","113321","133121","313121","211331",
+"231131","213113","213311","213131","311123","311321","331121","312113","312311","332111",
+"314111","221411","431111","111224","111422","121124","121421","141122","141221","112214",
+"112412","122114","122411","142112","142211","241211","221114","413111","241112","134111",
+"111242","121142","121241","114212","124112","124211","411212","421112","421211","212141",
+"214121","412121","111143","111341","131141","114113","114311","411113","411311","113141",
+"114131","311141","411131","211412","211214","211232","2331112"
+];
+var STOP_PATTERN = "2331112";
+var START_A = 103, START_B = 104, START_C = 105;
+var CODE_A = 101, CODE_B = 100, CODE_C = 99, STOP = 106;
+var FNC1 = 102, FNC2 = 97, FNC3 = 96, FNC4_A = 101, SHIFT = 98;
+
+// Code A / Code B value->char tables (values 0-95)
+var CODE_A_CHARS = [];
+var CODE_B_CHARS = [];
+(function buildTables(){
+  for (var v = 0; v < 64; v++) CODE_A_CHARS[v] = String.fromCharCode(v + 32 <= 95 ? v + 32 : v);
+  for (var v2 = 0; v2 < 96; v2++) CODE_B_CHARS[v2] = String.fromCharCode(32 + v2);
+  // Code A: values 0-63 -> ASCII 32-95 ; values 64-95 -> control chars 0-31
+  for (var v3 = 0; v3 < 32; v3++) CODE_A_CHARS[64 + v3] = String.fromCharCode(v3);
+})();
+
+function decodeCode128Value(codeSet, value){
+  if (codeSet === 'A') return CODE_A_CHARS[value] || '';
+  if (codeSet === 'B') return CODE_B_CHARS[value] || '';
+  return null;
+}
+
+// Decode a single Code 128 row given as an array of module-width integers
+// (bar,space,bar,space,... starting and ending with bars), OR given as a
+// raw text string already representing decoded characters (fallback path).
+function decodeCode128FromWidths(widths){
+  // widths: array of numbers, 6 modules per char, 11 modules per symbol char
+  // Each symbol character = 6 elements (3 bar + 3 space) summing to 11 modules.
+  if (!widths || widths.length < 6) throw new Error('insufficient data');
+
+  var modulesPerChar = 11;
+  var results = [];
+  var i = 0;
+  // Normalize widths into approx module counts using k-means-esque bucket:
+  var unit = estimateModuleUnit(widths);
+  var normalized = widths.map(function(w){ return Math.max(1, Math.round(w / unit)); });
+
+  var chars = [];
+  for (i = 0; i + 6 <= normalized.length; i += 6) {
+    var chunk = normalized.slice(i, i + 6);
+    var patternStr = chunk.join('');
+    var idx = CODE128_PATTERNS.indexOf(patternStr);
+    chars.push(idx);
+  }
+  return chars; // array of pattern-table indices (values), -1 if unmatched
+}
+
+function estimateModuleUnit(widths){
+  var sorted = widths.slice().sort(function(a,b){return a-b;});
+  return sorted[Math.floor(sorted.length * 0.15)] || 1;
+}
+
+// Given an array of Code128 value-indices for one row (already includes
+// start code, data, checksum, stop), decode to string + metadata.
+function interpretCode128Row(values){
+  if (!values.length) throw new Error('empty row');
+  var start = values[0];
+  var codeSet;
+  if (start === START_A) codeSet = 'A';
+  else if (start === START_B) codeSet = 'B';
+  else if (start === START_C) codeSet = 'C';
+  else throw new Error('missing/invalid start character');
+
+  var body = values.slice(1, -2); // exclude start + checksum + stop
+  var checksum = values[values.length - 2];
+  // validate checksum
+  var sum = start;
+  for (var i = 0; i < body.length; i++) sum += body[i] * (i + 1);
+  var expected = sum % 103;
+  var checksumOk = (expected === checksum);
+
+  var text = '';
+  var cs = codeSet;
+  for (var j = 0; j < body.length; j++) {
+    var v = body[j];
+    if (v === CODE_A) { cs = 'A'; continue; }
+    if (v === CODE_B) { cs = 'B'; continue; }
+    if (v === CODE_C) { cs = 'C'; continue; }
+    if (v === FNC1 || v === FNC2 || v === FNC3) continue;
+    if (cs === 'C') {
+      text += (v < 10 ? '0' + v : '' + v);
+    } else {
+      var ch = decodeCode128Value(cs, v);
+      if (ch !== null) text += ch;
+    }
+  }
+  return { text: text, checksumOk: checksumOk, codeSet: codeSet };
+}
+
+/* ---------- Codablock-F row indicator handling ----------
+   In Codablock-F, the character immediately after Start in each row
+   (in Code Set A) encodes the row number:
+     Row 1: Code A value 'K'(index) representing row indicator 0 -> row 1
+   Practically: row indicator value = 42 + rowNumber (values 42-84 map to
+   rows 1-43), per the Uniform Symbology Specification for Codablock F.
+   We use that offset to reorder rows regardless of scan order. */
+function rowNumberFromIndicator(indicatorValue){
+  var n = indicatorValue - 42;
+  if (n < 1 || n > 44) return null;
+  return n;
+}
+
+/* ============================================================
+   HIGH-LEVEL "ROWS OF TEXT" INTERPRETER
+   ============================================================
+   Given this is a browser environment without a bundled native
+   Codablock-F reader, the practical scan path is:
+     - manual/paste path: rows are typed as raw decoded text lines,
+       already stripped of start/stop, OR
+     - camera path: attempts pattern extraction; if confidence is low,
+       prompts the user to the manual/upload fallback.
+   Both paths converge here: given a list of row payload strings
+   (already resolved to text, in row order or with explicit row
+   numbers), stitch them into the final message.
+============================================================ */
+function stitchRows(rowObjects){
+  // rowObjects: [{row: n, text: '...'}]
+  rowObjects.sort(function(a, b){ return a.row - b.row; });
+  var seen = {};
+  var out = [];
+  for (var i = 0; i < rowObjects.length; i++) {
+    var r = rowObjects[i];
+    if (seen[r.row]) continue;
+    seen[r.row] = true;
+    out.push(r.text);
+  }
+  return out.join('');
+}
+
+/* ============================================================
+   UI WIRING
+   ============================================================ */
+var video = document.getElementById('video');
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d', { willReadFrequently: true });
+var viewportWrap = document.getElementById('viewportWrap');
+var viewportIdle = document.getElementById('viewportIdle');
+var startBtn = document.getElementById('startBtn');
+var stopBtn = document.getElementById('stopBtn');
+var readout = document.getElementById('readout');
+var rowTracker = document.getElementById('rowTracker');
+var statusIndicator = document.getElementById('statusIndicator');
+var statusText = document.getElementById('statusText');
+var errorMsg = document.getElementById('errorMsg');
+var outputBox = document.getElementById('output');
+var outputText = document.getElementById('outputText');
+var outputMeta = document.getElementById('outputMeta');
+var copyBtn = document.getElementById('copyBtn');
+var manualTrigger = document.getElementById('manualTrigger');
+var manualPanel = document.getElementById('manualPanel');
+var manualText = document.getElementById('manualText');
+var manualSubmit = document.getElementById('manualSubmit');
+var uploadTrigger = document.getElementById('uploadTrigger');
+var uploadInput = document.getElementById('uploadInput');
+var historySection = document.getElementById('historySection');
+var historyList = document.getElementById('historyList');
+
+var stream = null;
+var scanLoopHandle = null;
+var scanning = false;
+var detectedRowsMap = {}; // rowNumber -> text
+var expectedRowCount = null;
+var sessionHistory = [];
+
+function setStatus(live, text){
+  statusText.textContent = text;
+  statusIndicator.classList.toggle('live', !!live);
+}
+
+function setReadout(msg){
+  readout.innerHTML = '<span class="caret"></span>' + escapeHtml(msg);
+}
+
+function escapeHtml(s){
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function showError(msg){
+  errorMsg.textContent = msg;
+  errorMsg.classList.add('open');
+}
+function clearError(){
+  errorMsg.classList.remove('open');
+  errorMsg.textContent = '';
+}
+
+function renderRowTracker(total){
+  rowTracker.innerHTML = '';
+  if (!total) return;
+  for (var i = 1; i <= total; i++) {
+    var seg = document.createElement('div');
+    seg.className = 'seg' + (detectedRowsMap[i] ? ' got' : '');
+    rowTracker.appendChild(seg);
+  }
+}
+
+async function startScan(){
+  clearError();
+  detectedRowsMap = {};
+  expectedRowCount = null;
+  outputBox.classList.remove('open');
+  renderRowTracker(0);
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 1280 } },
+      audio: false
+    });
+  } catch (err) {
+    showError('Camera access denied or unavailable (' + (err.message || err.name) + '). Use "enter code manually" or "upload a photo instead" below.');
+    return;
+  }
+
+  video.srcObject = stream;
+  await video.play();
+  viewportIdle.style.display = 'none';
+  viewportWrap.classList.add('active');
+  startBtn.style.display = 'none';
+  stopBtn.style.display = 'block';
+  scanning = true;
+  setStatus(true, 'scanning');
+  setReadout('locating symbol...');
+  scanLoopHandle = requestAnimationFrame(scanFrame);
+}
+
+function stopScan(){
+  scanning = false;
+  if (scanLoopHandle) cancelAnimationFrame(scanLoopHandle);
+  if (stream) {
+    stream.getTracks().forEach(function(t){ t.stop(); });
+    stream = null;
+  }
+  viewportWrap.classList.remove('active');
+  viewportIdle.style.display = 'flex';
+  startBtn.style.display = 'block';
+  stopBtn.style.display = 'none';
+  setStatus(false, 'idle');
+  setReadout('stopped');
+}
+
+var frameCounter = 0;
+function scanFrame(){
+  if (!scanning) return;
+  frameCounter++;
+  // Sample at a moderate rate to save battery
+  if (frameCounter % 4 === 0) {
+    try { analyzeCurrentFrame(); } catch (e) { /* swallow per-frame errors */ }
+  }
+  scanLoopHandle = requestAnimationFrame(scanFrame);
+}
+
+function analyzeCurrentFrame(){
+  if (!video.videoWidth) return;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  var candidateRows = extractBarcodeRowsFromImage(imgData, canvas.width, canvas.height);
+
+  if (candidateRows.length === 0) {
+    setReadout('locating symbol...');
+    return;
+  }
+
+  var newlyDecoded = 0;
+  candidateRows.forEach(function(rowWidths){
+    try {
+      var values = decodeCode128FromWidths(rowWidths);
+      if (values.indexOf(-1) !== -1) return;
+      var interpreted = interpretCode128Row(values);
+      if (!interpreted.checksumOk) return;
+      // first char of body should be the row indicator (Code Set A value)
+      var rowIndicatorValue = values[1];
+      var rowNum = rowNumberFromIndicator(rowIndicatorValue);
+      if (!rowNum) return;
+      var payload = interpreted.text.slice(1); // strip row indicator char itself
+      if (!detectedRowsMap[rowNum]) {
+        detectedRowsMap[rowNum] = payload;
+        newlyDecoded++;
+      }
+    } catch (e) { /* row didn't decode cleanly, keep scanning */ }
+  });
+
+  var rowNums = Object.keys(detectedRowsMap).map(Number);
+  if (rowNums.length && !expectedRowCount) {
+    // heuristic: keep scanning until no new rows appear for a while, OR
+    // rows found form a clean contiguous run from 1 and stabilize.
+  }
+
+  if (newlyDecoded > 0) {
+    renderRowTracker(Math.max.apply(null, rowNums.concat([expectedRowCount || 0])));
+    setReadout('row ' + rowNums.sort(function(a,b){return a-b;}).join(', ') + ' resolved');
+    maybeFinish();
+  } else if (rowNums.length) {
+    setReadout(rowNums.length + ' row(s) resolved — hold steady for remaining rows');
+  }
+}
+
+var stableFrames = 0;
+function maybeFinish(){
+  var rowNums = Object.keys(detectedRowsMap).map(Number).sort(function(a,b){return a-b;});
+  if (!rowNums.length) return;
+  var isContiguous = rowNums.every(function(n, i){ return n === i + 1; });
+  if (isContiguous && rowNums.length >= 1) {
+    stableFrames++;
+    if (stableFrames > 6) {
+      finishDecode();
+    }
+  } else {
+    stableFrames = 0;
+  }
+}
+
+function finishDecode(){
+  var rowNums = Object.keys(detectedRowsMap).map(Number).sort(function(a,b){return a-b;});
+  var rowObjects = rowNums.map(function(n){ return { row: n, text: detectedRowsMap[n] }; });
+  var message = stitchRows(rowObjects);
+  presentResult(message, rowNums.length);
+  stopScan();
+}
+
+function presentResult(message, rowCount){
+  outputText.textContent = message || '(empty payload)';
+  outputMeta.textContent = rowCount + ' row(s) reassembled // ' + new Date().toLocaleTimeString();
+  outputBox.classList.add('open');
+  typewriterReveal();
+  pushHistory(message);
+}
+
+function typewriterReveal(){
+  var full = outputText.textContent;
+  outputText.textContent = '';
+  var i = 0;
+  var iv = setInterval(function(){
+    outputText.textContent = full.slice(0, i);
+    i++;
+    if (i > full.length) clearInterval(iv);
+  }, 14);
+}
+
+function pushHistory(message){
+  sessionHistory.unshift({ text: message, time: new Date().toLocaleTimeString() });
+  sessionHistory = sessionHistory.slice(0, 8);
+  renderHistory();
+}
+
+function renderHistory(){
+  if (!sessionHistory.length) { historySection.style.display = 'none'; return; }
+  historySection.style.display = 'block';
+  historyList.innerHTML = '';
+  sessionHistory.forEach(function(h){
+    var el = document.createElement('div');
+    el.className = 'h-item';
+    el.textContent = h.text;
+    var t = document.createElement('span');
+    t.className = 'h-time';
+    t.textContent = h.time;
+    el.appendChild(t);
+    historyList.appendChild(el);
+  });
+}
+
+/* ---------- naive row/bar extraction from raw pixels ----------
+   Scans horizontal slices of the frame, converts to a binary
+   black/white sequence via adaptive threshold, and derives run-length
+   module widths per candidate row. This is a best-effort extraction
+   layer intended for reasonably clean, well-lit, close-up frames —
+   the woodcut-camouflaged target benefits from the contrast boost
+   already applied to the <video> element, plus this thresholding pass. */
+function extractBarcodeRowsFromImage(imgData, w, h){
+  var data = imgData.data;
+  var rows = [];
+  var sliceCount = 24;
+  for (var s = 0; s < sliceCount; s++) {
+    var y = Math.floor(h * (0.28 + (s / sliceCount) * 0.44));
+    var rowWidths = sliceToRunLengths(data, w, h, y);
+    if (rowWidths && rowWidths.length >= 30) rows.push(rowWidths);
+  }
+  return rows;
+}
+
+function sliceToRunLengths(data, w, h, y){
+  var vals = [];
+  for (var x = 0; x < w; x++) {
+    var idx = (y * w + x) * 4;
+    var lum = 0.299 * data[idx] + 0.587 * data[idx+1] + 0.114 * data[idx+2];
+    vals.push(lum);
+  }
+  var min = Math.min.apply(null, vals);
+  var max = Math.max.apply(null, vals);
+  if (max - min < 40) return null; // insufficient contrast on this slice
+  var threshold = (min + max) / 2;
+  var bits = vals.map(function(v){ return v < threshold ? 1 : 0; }); // 1 = bar(dark)
+
+  var runs = [];
+  var current = bits[0], len = 1;
+  for (var i = 1; i < bits.length; i++) {
+    if (bits[i] === current) { len++; }
+    else { runs.push(len); current = bits[i]; len = 1; }
+  }
+  runs.push(len);
+  return runs;
+}
+
+/* ---------- manual entry path ---------- */
+manualTrigger.addEventListener('click', function(){
+  manualPanel.classList.toggle('open');
+});
+
+manualSubmit.addEventListener('click', function(){
+  clearError();
+  var raw = manualText.value.trim();
+  if (!raw) { showError('Enter row text or a full payload before decoding.'); return; }
+  var lines = raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  var message;
+  if (lines.length > 1) {
+    var rowObjects = lines.map(function(l, i){ return { row: i + 1, text: l }; });
+    message = stitchRows(rowObjects);
+  } else {
+    message = lines[0];
+  }
+  presentResult(message, lines.length);
+});
+
+/* ---------- upload photo path ---------- */
+uploadTrigger.addEventListener('click', function(){
+  uploadInput.click();
+});
+uploadInput.addEventListener('change', function(e){
+  var file = e.target.files[0];
+  if (!file) return;
+  clearError();
+  var img = new Image();
+  img.onload = function(){
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var candidateRows = extractBarcodeRowsFromImage(imgData, canvas.width, canvas.height);
+    var localRows = {};
+    candidateRows.forEach(function(rowWidths){
+      try {
+        var values = decodeCode128FromWidths(rowWidths);
+        if (values.indexOf(-1) !== -1) return;
+        var interpreted = interpretCode128Row(values);
+        if (!interpreted.checksumOk) return;
+        var rowIndicatorValue = values[1];
+        var rowNum = rowNumberFromIndicator(rowIndicatorValue);
+        if (!rowNum) return;
+        var payload = interpreted.text.slice(1);
+        localRows[rowNum] = payload;
+      } catch (err) { /* skip */ }
+    });
+    var rowNums = Object.keys(localRows).map(Number).sort(function(a,b){return a-b;});
+    if (!rowNums.length) {
+      showError('No Codablock-F rows resolved from that image. Try a closer, more evenly lit photo, or use manual entry.');
+      return;
+    }
+    var rowObjects = rowNums.map(function(n){ return { row: n, text: localRows[n] }; });
+    presentResult(stitchRows(rowObjects), rowNums.length);
+  };
+  img.onerror = function(){ showError('Could not read that image file.'); };
+  img.src = URL.createObjectURL(file);
+});
+
+/* ---------- copy ---------- */
+copyBtn.addEventListener('click', function(){
+  var text = outputText.textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(function(){
+    copyBtn.textContent = 'copied';
+    setTimeout(function(){ copyBtn.textContent = 'copy'; }, 1400);
+  }).catch(function(){
+    copyBtn.textContent = 'failed';
+    setTimeout(function(){ copyBtn.textContent = 'copy'; }, 1400);
+  });
+});
+
+startBtn.addEventListener('click', startScan);
+stopBtn.addEventListener('click', stopScan);
+
+setStatus(false, 'idle');
+setReadout('awaiting input');
+</script>
+</body>
+</html>
