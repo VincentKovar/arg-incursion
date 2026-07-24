@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ENTHOUSIASTS :: DECODER</title>
+<style>
+  :root{
+    --bg: #050705;
+    --green: #33ff66;
+    --green-dim: #1c9940;
+    --green-faint: #0f4d24;
+    --spark: #aaffcc;
+    --text: #cdf5d8;
+    --mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--mono); height:100%; overflow-x:hidden; }
+  body{ display:flex; flex-direction:column; min-height:100vh; }
+
+  .crt{ pointer-events:none; position:fixed; inset:0; z-index:50;
+    background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.12) 3px);
+    mix-blend-mode:overlay; opacity:0.5; }
+  .vignette{ pointer-events:none; position:fixed; inset:0; z-index:49; box-shadow: inset 0 0 18vw 2vw rgba(0,0,0,0.85); }
+
+  .topbar{ position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:0.6rem; height:52px; padding:0 0.75rem;
+    background:linear-gradient(to bottom, #0b120b, #060906 90%); border-bottom:1px solid var(--green-faint);
+    box-shadow:0 1px 12px rgba(51,255,102,0.08); }
+  .topbar .mark{ width:40px; height:40px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+  .topbar .mark svg{ display:block; }
+  .topbar .wordmark{ font-size:0.72rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--green); line-height:1.15; white-space:nowrap; }
+  .topbar .wordmark small{ display:block; font-size:0.58rem; letter-spacing:0.18em; color:var(--green-dim); margin-top:1px; }
+  .topbar .status{ margin-left:auto; font-size:0.62rem; letter-spacing:0.1em; color:var(--green-dim); text-align:right; white-space:nowrap; }
+  .topbar .status .dot{ display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--green-dim); margin-right:5px; vertical-align:middle; }
+  .topbar .status.live .dot{ background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 1.4s infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }
+
+  main{ flex:1; display:flex; flex-direction:column; align-items:center; padding:1rem 0.85rem 2.5rem; max-width:520px; margin:0 auto; width:100%; }
+
+  .lede{ width:100%; margin:0.75rem 0 1rem; }
+  .lede .tag{ font-size:0.62rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--green-dim); margin:0 0 0.35rem; }
+  .lede h1{ font-size:1.05rem; font-weight:500; letter-spacing:0.01em; margin:0 0 0.5rem; color:var(--text); }
+  .lede p{ font-size:0.78rem; line-height:1.55; color:#8fd8a3; margin:0; }
+
+  .viewport-wrap{ position:relative; width:100%; aspect-ratio: 4 / 3; border:1px solid var(--green-faint); background:#020402; overflow:hidden; border-radius:2px; }
+  video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:contrast(1.35) saturate(0) brightness(1.05); opacity:0.92; }
+  canvas.hidden-canvas{ display:none; }
+
+  .reticle{ position:absolute; inset:0; pointer-events:none; display:flex; align-items:center; justify-content:center; }
+  .reticle .frame{ width:82%; height:46%; border:1px dashed rgba(51,255,102,0.55); position:relative; box-shadow:0 0 0 9999px rgba(0,0,0,0.35); }
+  .reticle .frame::before, .reticle .frame::after, .reticle .frame b::before, .reticle .frame b::after{
+    content:''; position:absolute; width:16px; height:16px; border-color:var(--green); border-style:solid; }
+  .reticle .frame::before{ top:-1px; left:-1px; border-width:2px 0 0 2px; }
+  .reticle .frame::after{ top:-1px; right:-1px; border-width:2px 2px 0 0; }
+  .reticle .frame b::before{ bottom:-1px; left:-1px; border-width:0 0 2px 2px; }
+  .reticle .frame b::after{ bottom:-1px; right:-1px; border-width:0 2px 2px 0; }
+
+  .viewport-idle{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.6rem;
+    color:var(--green-dim); font-size:0.68rem; letter-spacing:0.12em; text-align:center; padding:1.5rem; }
+
+  .readout{ width:100%; margin-top:0.65rem; font-size:0.68rem; letter-spacing:0.04em; color:var(--green-dim); min-height:1.1rem; display:flex; align-items:center; gap:0.4rem; }
+  .readout .caret{ display:inline-block; width:7px; height:12px; background:var(--green); animation:blink 1s steps(1) infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .controls{ width:100%; display:flex; gap:0.6rem; margin-top:0.9rem; }
+  button{ font-family:var(--mono); cursor:pointer; }
+  .btn{ flex:1; background:transparent; border:1px solid var(--green-dim); color:var(--green); padding:0.75rem 0.5rem;
+    font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; border-radius:2px; transition:all 0.15s ease; }
+  .btn:active{ transform:scale(0.97); }
+  .btn.primary{ background:var(--green-faint); border-color:var(--green); color:#eafff0; }
+  .btn.stop{ border-color:#7a2334; color:#ff7a91; }
+  .btn:disabled{ opacity:0.35; cursor:default; }
+
+  .secondary-row{ width:100%; display:flex; justify-content:space-between; margin-top:0.6rem; gap:0.6rem; }
+  .link-btn{ background:none; border:none; color:var(--green-dim); font-size:0.65rem; letter-spacing:0.08em;
+    text-decoration:underline; text-underline-offset:3px; padding:0.3rem 0; }
+
+  input[type=file]{ display:none; }
+
+  .manual-panel{ width:100%; margin-top:0.75rem; border:1px solid var(--green-faint); padding:0.75rem; display:none;
+    border-radius:2px; background:rgba(15,77,36,0.06); }
+  .manual-panel.open{ display:block; }
+  .manual-panel label{ display:block; font-size:0.6rem; letter-spacing:0.12em; color:var(--green-dim); margin-bottom:0.4rem; text-transform:uppercase; }
+  .manual-panel textarea{ width:100%; background:#020402; border:1px solid var(--green-faint); color:var(--text); font-family:var(--mono);
+    font-size:0.75rem; padding:0.5rem; resize:vertical; min-height:50px; border-radius:2px; }
+  .manual-panel .btn{ margin-top:0.5rem; }
+
+  .output{ width:100%; margin-top:1.1rem; border:1px solid var(--green-dim); border-radius:2px; background:#020602; display:none; overflow:hidden; }
+  .output.open{ display:block; }
+  .output .out-head{ display:flex; align-items:center; justify-content:space-between; padding:0.45rem 0.65rem; border-bottom:1px solid var(--green-faint); background:rgba(51,255,102,0.05); }
+  .output .out-head span{ font-size:0.62rem; letter-spacing:0.14em; color:var(--green); text-transform:uppercase; }
+  .output .copy-btn{ background:none; border:1px solid var(--green-faint); color:var(--green-dim); font-size:0.6rem; letter-spacing:0.08em; padding:0.25rem 0.5rem; border-radius:2px; }
+  .output .copy-btn:active{ background:var(--green-faint); color:var(--text); }
+  .output pre{ margin:0; padding:0.85rem 0.75rem 1rem; font-size:0.85rem; line-height:1.5; color:var(--spark); white-space:pre-wrap; word-break:break-word; min-height:1.4rem; }
+  .output .meta{ padding:0 0.75rem 0.75rem; font-size:0.6rem; color:var(--green-dim); letter-spacing:0.06em; }
+
+  .error-msg{ width:100%; margin-top:0.75rem; border:1px solid #7a2334; color:#ff8fa1; background:rgba(255,51,85,0.06);
+    padding:0.6rem 0.7rem; font-size:0.7rem; line-height:1.5; border-radius:2px; display:none; }
+  .error-msg.open{ display:block; }
+
+  .history{ width:100%; margin-top:1.4rem; }
+  .history .h-title{ font-size:0.6rem; letter-spacing:0.16em; color:var(--green-dim); text-transform:uppercase; margin-bottom:0.5rem;
+    border-bottom:1px solid var(--green-faint); padding-bottom:0.35rem; }
+  .history .h-item{ font-size:0.68rem; color:#7fbf90; padding:0.35rem 0; border-bottom:1px dashed rgba(51,255,102,0.12); word-break:break-word; }
+  .history .h-item .h-time{ display:block; color:var(--green-faint); font-size:0.58rem; margin-top:2px; }
+
+  footer{ text-align:center; padding:1.2rem 1rem 1.6rem; font-size:0.56rem; letter-spacing:0.14em; color:var(--green-faint); text-transform:uppercase; }
+
+  @media (prefers-reduced-motion: reduce){
+    .topbar .status.live .dot, .readout .caret{ animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="crt"></div>
+<div class="vignette"></div>
+
+<div class="topbar">
+  <div class="mark">
+    <svg id="markSvg" width="40" height="40" viewBox="96 67 68 46" style="overflow:visible;">
+      <polyline id="infline" fill="none" stroke="#33ff66" stroke-width="4"/>
+      <circle id="spark" cx="130" cy="90" r="4" fill="#aaffcc"/>
+    </svg>
+  </div>
+  <div class="wordmark">
+    ENTHOUSIASTS
+    <small>visual symbol decoder</small>
+  </div>
+  <div class="status" id="statusIndicator"><span class="dot"></span><span id="statusText">idle</span></div>
+</div>
+
+<main>
+
+  <div class="lede">
+    <p class="tag">// field instrument</p>
+    <h1>Point your camera at the mark.</h1>
+    <p>Some fences aren't fences. Frame the pattern steadily and hold still &mdash; the decoder needs a clean, well&#8209;lit line of bars to lock on.</p>
+  </div>
+
+  <div class="viewport-wrap" id="viewportWrap">
+    <video id="video" playsinline muted></video>
+    <canvas class="hidden-canvas" id="canvas"></canvas>
+    <div class="reticle"><div class="frame"><b></b></div></div>
+    <div class="viewport-idle" id="viewportIdle">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1c9940" stroke-width="1.4">
+        <rect x="3" y="6" width="18" height="12" rx="1"/>
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M8 6l1.2-2h5.6L16 6"/>
+      </svg>
+      <span>camera inactive</span>
+    </div>
+  </div>
+
+  <div class="readout" id="readout"><span class="caret"></span></div>
+
+  <div class="controls">
+    <button class="btn primary" id="startBtn">Start Scan</button>
+    <button class="btn stop" id="stopBtn" style="display:none;">Stop</button>
+  </div>
+
+  <div class="secondary-row">
+    <button class="link-btn" id="uploadTrigger">upload a photo instead</button>
+    <button class="link-btn" id="manualTrigger">enter code manually</button>
+  </div>
+  <input type="file" id="uploadInput" accept="image/*">
+
+  <div class="manual-panel" id="manualPanel">
+    <label>known code text</label>
+    <textarea id="manualText" placeholder="type or paste the decoded text here"></textarea>
+    <button class="btn primary" id="manualSubmit">Submit</button>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="output" id="output">
+    <div class="out-head">
+      <span>decoded transmission</span>
+      <button class="copy-btn" id="copyBtn">copy</button>
+    </div>
+    <pre id="outputText"></pre>
+    <div class="meta" id="outputMeta"></div>
+  </div>
+
+  <div class="history" id="historySection" style="display:none;">
+    <div class="h-title">recent scans</div>
+    <div id="historyList"></div>
+  </div>
+
+</main>
+
+<footer>signal persists // frame steady // hold still</footer>
+
+<!-- zxing-js: real, maintained barcode decoding (Code 128, Code 39, Aztec, Data Matrix, PDF417, QR, etc.) -->
+<script src="https://unpkg.com/@zxing/library@0.21.3"></script>
+
+<script>
+/* ============================================================
+   INFINITY MARK ANIMATION (top bar)
+   ============================================================ */
+(function(){
+  var N = 100, scale = 42;
+  var infPts = [];
+  for (var i = 0; i <= N; i++) {
+    var t = (i / N) * 2 * Math.PI;
+    infPts.push([scale * Math.sin(t), scale * Math.sin(t) * Math.cos(t), 0]);
+  }
+  var rightCenter = [26, 0, 0];
+  var a = 0, b = 0, t2 = 0;
+  var infline = document.getElementById('infline');
+  var spark = document.getElementById('spark');
+
+  function proj(p, cosA, sinA, cosB, sinB) {
+    var x = p[0], y = p[1], z = p[2];
+    var y1 = y * cosA - z * sinA, z1 = y * sinA + z * cosA;
+    var x2 = x * cosB - z1 * sinB, z2 = x * sinB + z1 * cosB;
+    var s = 90 / (140 - z2);
+    return [130 + x2 * s, 90 + y1 * s];
+  }
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function tick() {
+    a += 0.02; b += 0.013;
+    var cosA = Math.cos(a), sinA = Math.sin(a);
+    var cosB = Math.cos(b), sinB = Math.sin(b);
+    var str = '';
+    for (var i = 0; i < infPts.length; i++) {
+      var p = proj(infPts[i], cosA, sinA, cosB, sinB);
+      str += p[0].toFixed(1) + ',' + p[1].toFixed(1) + ' ';
+    }
+    infline.setAttribute('points', str);
+    var sp = proj(rightCenter, cosA, sinA, cosB, sinB);
+    spark.setAttribute('cx', sp[0]);
+    spark.setAttribute('cy', sp[1]);
+    t2 += 0.06;
+    var s2 = 1 + 0.4 * Math.sin(t2);
+    spark.setAttribute('r', 3.5 * s2);
+    spark.setAttribute('opacity', 0.6 + 0.4 * Math.sin(t2));
+    if (!reduceMotion) requestAnimationFrame(tick);
+  }
+  tick();
+})();
+
+/* ============================================================
+   SCANNER LOGIC — real decoding via zxing-js
+   Target format: CODE_128 (verified to exist in the zxing-js
+   BarcodeFormat enum, unlike CODABLOCK_F which is not implemented
+   by any mainstream JS barcode library).
+   ============================================================ */
+var video = document.getElementById('video');
+var canvas = document.getElementById('canvas');
+var viewportWrap = document.getElementById('viewportWrap');
+var viewportIdle = document.getElementById('viewportIdle');
+var startBtn = document.getElementById('startBtn');
+var stopBtn = document.getElementById('stopBtn');
+var readout = document.getElementById('readout');
+var statusIndicator = document.getElementById('statusIndicator');
+var statusText = document.getElementById('statusText');
+var errorMsg = document.getElementById('errorMsg');
+var outputBox = document.getElementById('output');
+var outputText = document.getElementById('outputText');
+var outputMeta = document.getElementById('outputMeta');
+var copyBtn = document.getElementById('copyBtn');
+var manualTrigger = document.getElementById('manualTrigger');
+var manualPanel = document.getElementById('manualPanel');
+var manualText = document.getElementById('manualText');
+var manualSubmit = document.getElementById('manualSubmit');
+var uploadTrigger = document.getElementById('uploadTrigger');
+var uploadInput = document.getElementById('uploadInput');
+var historySection = document.getElementById('historySection');
+var historyList = document.getElementById('historyList');
+
+var sessionHistory = [];
+var codeReader = null;
+var scanning = false;
+
+function setStatus(live, text){
+  statusText.textContent = text;
+  statusIndicator.classList.toggle('live', !!live);
+}
+function setReadout(msg){
+  readout.innerHTML = '<span class="caret"></span>' + escapeHtml(msg);
+}
+function escapeHtml(text){
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+function showError(msg){
+  errorMsg.textContent = msg;
+  errorMsg.classList.add('open');
+}
+function clearError(){
+  errorMsg.classList.remove('open');
+  errorMsg.textContent = '';
+}
+
+function buildReader(){
+  var hints = new Map();
+  // CODE_128 is a real, implemented format in zxing-js.
+  // Add CODE_39 as well since it's common for "antique ledger" style props.
+  var formats = [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39];
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  return new ZXing.BrowserMultiFormatReader(hints);
+}
+
+async function startScan(){
+  clearError();
+  outputBox.classList.remove('open');
+
+  if (typeof ZXing === 'undefined') {
+    showError('Decoder library failed to load (no network access to unpkg.com?). Use "enter code manually" below.');
+    return;
+  }
+
+  codeReader = buildReader();
+
+  try {
+    var videoInputDevices = await codeReader.listVideoInputDevices();
+    if (!videoInputDevices.length) {
+      showError('No camera found on this device. Use "upload a photo instead" or "enter code manually" below.');
+      return;
+    }
+    var selectedDeviceId = videoInputDevices[0].deviceId;
+    for (var i = 0; i < videoInputDevices.length; i++) {
+      if (/back|rear|environment/i.test(videoInputDevices[i].label)) {
+        selectedDeviceId = videoInputDevices[i].deviceId;
+        break;
+      }
+    }
+
+    viewportIdle.style.display = 'none';
+    startBtn.style.display = 'none';
+    stopBtn.style.display = 'block';
+    scanning = true;
+    setStatus(true, 'scanning');
+    setReadout('locating symbol...');
+
+    codeReader.decodeFromVideoDevice(selectedDeviceId, video, function(result, err){
+      if (result) {
+        var text = result.getText();
+        if (text && text.length) {
+          presentResult(text, result.getBarcodeFormat ? String(result.getBarcodeFormat()) : 'CODE_128');
+          stopScan();
+        } else {
+          setReadout('pattern detected but unreadable — hold steadier / move closer');
+        }
+      }
+      if (err && !(err instanceof ZXing.NotFoundException)) {
+        console.error(err);
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    showError('Camera access denied or unavailable (' + (err.message || err.name || 'unknown error') + '). Use "enter code manually" or "upload a photo instead" below.');
+    resetControlsToIdle();
+  }
+}
+
+function stopScan(){
+  scanning = false;
+  if (codeReader) {
+    try { codeReader.reset(); } catch (e) {}
+  }
+  resetControlsToIdle();
+}
+
+function resetControlsToIdle(){
+  viewportIdle.style.display = 'flex';
+  startBtn.style.display = 'block';
+  stopBtn.style.display = 'none';
+  setStatus(false, 'idle');
+  setReadout('awaiting input');
+}
+
+function presentResult(message, formatLabel){
+  outputText.textContent = message || '(empty payload)';
+  outputMeta.textContent = (formatLabel || 'CODE_128') + ' // ' + new Date().toLocaleTimeString();
+  outputBox.classList.add('open');
+  typewriterReveal();
+  pushHistory(message);
+}
+
+function typewriterReveal(){
+  var full = outputText.textContent;
+  outputText.textContent = '';
+  var i = 0;
+  var iv = setInterval(function(){
+    outputText.textContent = full.slice(0, i);
+    i++;
+    if (i > full.length) clearInterval(iv);
+  }, 14);
+}
+
+function pushHistory(message){
+  sessionHistory.unshift({ text: message, time: new Date().toLocaleTimeString() });
+  sessionHistory = sessionHistory.slice(0, 8);
+  renderHistory();
+}
+
+function renderHistory(){
+  if (!sessionHistory.length) { historySection.style.display = 'none'; return; }
+  historySection.style.display = 'block';
+  historyList.innerHTML = '';
+  sessionHistory.forEach(function(h){
+    var el = document.createElement('div');
+    el.className = 'h-item';
+    el.textContent = h.text;
+    var t = document.createElement('span');
+    t.className = 'h-time';
+    t.textContent = h.time;
+    el.appendChild(t);
+    historyList.appendChild(el);
+  });
+}
+
+/* ---------- manual entry ---------- */
+manualTrigger.addEventListener('click', function(){
+  manualPanel.classList.toggle('open');
+});
+manualSubmit.addEventListener('click', function(){
+  clearError();
+  var raw = manualText.value.trim();
+  if (!raw) { showError('Enter the code text before submitting.'); return; }
+  presentResult(raw, 'manual entry');
+});
+
+/* ---------- upload photo path (still real zxing decode, from a still image) ---------- */
+uploadTrigger.addEventListener('click', function(){ uploadInput.click(); });
+uploadInput.addEventListener('change', function(e){
+  var file = e.target.files[0];
+  if (!file) return;
+  clearError();
+
+  if (typeof ZXing === 'undefined') {
+    showError('Decoder library failed to load (no network access?). Use "enter code manually" instead.');
+    return;
+  }
+
+  var img = new Image();
+  img.onload = function(){
+    var reader = buildReader();
+    reader.decodeFromImageElement(img).then(function(result){
+      presentResult(result.getText(), result.getBarcodeFormat ? String(result.getBarcodeFormat()) : 'CODE_128');
+    }).catch(function(err){
+      console.error(err);
+      showError('No readable code found in that image. Try a closer, more evenly lit, less angled photo — or use manual entry.');
+    });
+  };
+  img.onerror = function(){ showError('Could not read that image file.'); };
+  img.src = URL.createObjectURL(file);
+});
+
+/* ---------- copy ---------- */
+copyBtn.addEventListener('click', function(){
+  var text = outputText.textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(function(){
+    copyBtn.textContent = 'copied';
+    setTimeout(function(){ copyBtn.textContent = 'copy'; }, 1400);
+  }).catch(function(){
+    copyBtn.textContent = 'failed';
+    setTimeout(function(){ copyBtn.textContent = 'copy'; }, 1400);
+  });
+});
+
+startBtn.addEventListener('click', startScan);
+stopBtn.addEventListener('click', stopScan);
+
+setStatus(false, 'idle');
+setReadout('awaiting input');
+</script>
+</body>
+</html>
