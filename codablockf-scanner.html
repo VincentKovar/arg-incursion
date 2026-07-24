@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ARG Clue Scanner</title>
+  <style>
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background-color: #121212;
+      color: #00ff66;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 20px;
+    }
+    
+    h1 {
+      font-size: 1.4rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 15px;
+    }
+
+    #scanner-container {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      aspect-ratio: 4 / 3;
+      border: 2px solid #00ff66;
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Target overlay to help players align the woodcut code */
+    .viewfinder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      height: 50%;
+      border: 1px dashed rgba(0, 255, 102, 0.7);
+      pointer-events: none;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+    }
+
+    #result {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 480px;
+      padding: 15px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 6px;
+      word-break: break-word;
+      min-height: 50px;
+      text-align: center;
+    }
+
+    .btn {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #00ff66;
+      color: #000;
+      font-weight: bold;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+  <!-- Load ZXing JS Library with Codablock Support -->
+  <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
+</head>
+<body>
+
+  <h1>Decrypt Visual Symbol</h1>
+
+  <div id="scanner-container">
+    <video id="video"></video>
+    <div class="viewfinder"></div>
+  </div>
+
+  <div id="result">
+    <em>Align the Codablock symbol inside the box...</em>
+  </div>
+
+  <button class="btn" id="reset-btn" style="display: none;">Scan Another Code</button>
+
+  <script>
+    const videoElement = document.getElementById('video');
+    const resultElement = document.getElementById('result');
+    const resetBtn = document.getElementById('reset-btn');
+
+    // 1. Explicitly specify Codablock-F format to restrict and speed up scanning
+    const hints = new Map();
+    const formats = [ZXing.BarcodeFormat.CODABLOCK_F];
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+
+    // 2. Initialize the reader with hints
+    const codeReader = new ZXing.BrowserMultiFormatReader(hints);
+
+    async function startScanner() {
+      try {
+        // Request back/environment camera on phones
+        const constraints = {
+          video: { facingMode: { exact: "environment" } }
+        };
+
+        // Fallback for laptops/desktop browsers lacking camera facing controls
+        let videoInputDevices = await codeReader.listVideoInputDevices();
+        let selectedDeviceId = videoInputDevices[0]?.deviceId;
+
+        // Try to select environment/back camera if available
+        for (const device of videoInputDevices) {
+          if (/back|rear|environment/i.test(device.label)) {
+            selectedDeviceId = device.deviceId;
+            break;
+          }
+        }
+
+        // 3. Start continuous scanning from device camera
+        codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+          if (result) {
+            // Successfully scanned a Codablock-F code!
+            console.log("Decoded Codablock-F:", result.getText());
+            
+            // Display the clue
+            resultElement.innerHTML = `<strong>CLUE UNLOCKED:</strong><br><br>${escapeHtml(result.getText())}`;
+            
+            // Stop scanning and show reset button
+            codeReader.reset();
+            resetBtn.style.display = 'inline-block';
+          }
+          if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error(err);
+          }
+        });
+
+      } catch (err) {
+        console.error("Camera access error:", err);
+        resultElement.innerText = "Error: Camera access denied or unavailable over non-HTTPS connection.";
+      }
+    }
+
+    // Basic HTML escaping to prevent XSS if the barcode contains HTML strings
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+    }
+
+    resetBtn.addEventListener('click', () => {
+      resultElement.innerHTML = "<em>Align the Codablock symbol inside the box...</em>";
+      resetBtn.style.display = 'none';
+      startScanner();
+    });
+
+    // Start scanner on load
+    window.addEventListener('load', startScanner);
+  </script>
+</body>
+</html>
