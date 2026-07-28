@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODEX LUDENS: The 32 Paleolithic Symbols & Play Engine</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ochre: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            300: '#fcd34d',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                            800: '#92400e',
+                            900: '#78350f',
+                            950: '#451a03',
+                        },
+                        charcoal: '#0d0d0f',
+                        cave: '#121115',
+                        panel: '#1a1820',
+                        rune: '#ff6b35'
+                    },
+                    fontFamily: {
+                        mono: ['Courier New', 'Courier', 'monospace'],
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #0d0d0f;
+            color: #e5e7eb;
+            background-image: radial-gradient(circle at 50% 20%, rgba(180, 83, 9, 0.08) 0%, rgba(13, 13, 15, 1) 70%);
+            min-height: 100vh;
+        }
+
+        .cave-texture {
+            background-image: radial-gradient(rgba(245, 158, 11, 0.03) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+
+        .glow-ochre {
+            box-shadow: 0 0 20px rgba(217, 119, 6, 0.25);
+        }
+
+        .glow-ochre-lg {
+            box-shadow: 0 0 35px rgba(245, 158, 11, 0.4);
+        }
+
+        .border-ochre-glow {
+            border-color: rgba(217, 119, 6, 0.4);
+        }
+
+        .rune-card:hover .rune-svg {
+            transform: scale(1.08);
+            filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.8));
+        }
+
+        .rune-svg {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121115;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #b45309;
+        }
+
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.03); }
+        }
+
+        .magic-pulse {
+            animation: pulse-slow 4s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="cave-texture font-sans antialiased text-gray-200 selection:bg-ochre-600 selection:text-white flex flex-col min-h-screen">
+
+    <header class="border-b border-ochre-900/50 bg-cave/80 backdrop-blur sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-lg bg-ochre-950 border border-ochre-600/50 flex items-center justify-center text-ochre-500 shadow-inner">
+                    <i class="fa-solid font-mono font-bold text-xl">L32</i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="font-mono text-lg font-bold tracking-wider text-ochre-400">PROJECT LUDUS-32</h1>
+                        <span class="text-xs px-2 py-0.5 rounded bg-ochre-900/60 text-ochre-300 font-mono border border-ochre-700/50">ARCHAEOLOGICAL ENGINE</span>
+                    </div>
+                    <p class="text-xs text-gray-400">Deep Paleolithic Symbol Atlas & Homo Ludens Matrix (40,000 BCE – 10,000 BCE)</p>
+                </div>
+            </div>
+
+            <!-- Header Controls & Audio Toggle -->
+            <div class="flex items-center space-x-3">
+                <button id="audio-toggle-btn" class="px-3 py-1.5 rounded-md bg-panel border border-gray-700 hover:border-ochre-500 text-xs font-mono flex items-center space-x-2 transition">
+                    <i class="fa-solid fa-volume-xmark text-gray-400" id="audio-icon"></i>
+                    <span id="audio-status-text" class="text-gray-300">AUDIO OFF</span>
+                </button>
+                <div class="hidden md:flex items-center space-x-1 text-xs font-mono text-ochre-500 bg-ochre-950/80 px-3 py-1.5 rounded border border-ochre-800/60">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-1"></span>
+                    <span>IPL ARCHIVE // SEC-40K</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="bg-panel/60 border-b border-gray-800/80">
+        <div class="max-w-7xl mx-auto px-4 flex overflow-x-auto space-x-2 py-2">
+            <button data-tab="catalog" class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-ochre-600/20 text-ochre-400 border border-ochre-500/40">
+                <i class="fa-solid fa-shapes"></i>
+                <span>The 32 Symbols Codex</span>
+            </button>
+            <button data-tab="magic-circle" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800/50">
+                <i class="fa-solid fa-circle-nodes"></i>
+                <span>Magic Circle Sandbox</span>
+            </button>
+            <button data-tab="theory" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800/50">
+                <i class="fa-solid fa-book-journal-whills"></i>
+                <span>Play Theory & ARG Lore</span>
+            </button>
+            <button data-tab="cipher" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800/50">
+                <i class="fa-solid fa-terminal"></i>
+                <span>ARG Decrypter Logs</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT CONTAINERS -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
+
+        <section id="tab-catalog" class="tab-content block space-y-6">
+            <!-- Filter & Search Section -->
+            <div class="bg-panel border border-gray-800 rounded-xl p-4 shadow-lg flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+                <!-- Search Box -->
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
+                    <input type="text" id="symbol-search" placeholder="Search by name, archetype (e.g. Agon, Magic Circle, Ilinx)..." class="w-full pl-9 pr-4 py-2 rounded-lg bg-cave border border-gray-700 text-sm text-gray-200 focus:outline-none focus:border-ochre-500 font-mono">
+                </div>
+
+                <!-- Play Archetype Filter -->
+                <div class="flex items-center space-x-2 overflow-x-auto pb-1 md:pb-0">
+                    <span class="text-xs font-mono text-gray-400 whitespace-nowrap"><i class="fa-solid fa-filter mr-1"></i>PLAY TYPE:</span>
+                    <select id="archetype-filter" class="bg-cave border border-gray-700 text-xs rounded-lg px-3 py-2 text-gray-300 focus:outline-none focus:border-ochre-500 font-mono">
+                        <option value="all">ALL LUDIC CATEGORIES</option>
+                        <option value="Boundary / Magic Circle">Magic Circle / Boundary</option>
+                        <option value="Agon (Competition/Rules)">Agon (Rules & Competition)</option>
+                        <option value="Alea (Chance/Pits)">Alea (Chance & Fortune)</option>
+                        <option value="Mimicry (Role/Shamanism)">Mimicry (Mask & Simulation)</option>
+                        <option value="Ilinx (Vertigo/Flow)">Ilinx (Vertigo & Ecstasy)</option>
+                        <option value="Lusory Action">Lusory Action / Player State</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="flex items-center justify-between text-xs font-mono text-gray-400 px-1">
+                <span>Showing <strong id="visible-count" class="text-ochre-400">32</strong> of 32 Paleolithic Signs</span>
+                <span>Source: Genevieve von Petzinger Catalog (40,000 BCE – 10,000 BCE)</span>
+            </div>
+
+            <!-- Symbol Cards Grid -->
+            <div id="symbols-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- Javascript will dynamically populate cards here -->
+            </div>
+        </section>
+
+
+        <section id="tab-magic-circle" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Canvas Altar & Magic Circle Display -->
+                <div class="lg:col-span-7 bg-panel border border-ochre-900/50 rounded-xl p-6 flex flex-col items-center justify-center relative min-h-[480px] shadow-2xl overflow-hidden">
+                    <!-- Background ambient glow -->
+                    <div class="absolute w-80 h-80 rounded-full bg-ochre-600/10 magic-pulse pointer-events-none"></div>
+
+                    <div class="text-center mb-4 z-10">
+                        <h2 class="font-mono text-lg text-ochre-400 font-bold tracking-widest"><i class="fa-solid fa-compass-drafting mr-2"></i>THE FIRST MAGIC CIRCLE</h2>
+                        <p class="text-xs text-gray-400 max-w-md">According to Huizinga, play creates a bounded space set apart from mundane reality. Select up to 6 Paleolithic symbols to cast into the circle.</p>
+                    </div>
+
+                    <!-- Canvas representation -->
+                    <div class="relative w-72 h-72 sm:w-80 sm:h-80 my-2 flex items-center justify-center">
+                        <canvas id="circle-canvas" width="320" height="320" class="w-full h-full rounded-full border-2 border-ochre-700/40 bg-cave/80 shadow-2xl cursor-pointer"></canvas>
+                        
+                        <!-- Center Core Text -->
+                        <div id="circle-center-label" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center p-4">
+                            <span class="text-3xl text-ochre-500 opacity-30 font-mono">☸</span>
+                            <span class="text-xs font-mono text-gray-500 mt-1">EMPTY SANCTUARY</span>
+                        </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="flex items-center space-x-3 mt-4 z-10">
+                        <button id="clear-circle-btn" class="px-3 py-1.5 rounded bg-gray-800 hover:bg-red-950 text-red-300 text-xs font-mono border border-gray-700 transition">
+                            <i class="fa-solid fa-trash-can mr-1"></i> Clear Circle
+                        </button>
+                        <button id="synthesize-btn" class="px-4 py-1.5 rounded bg-ochre-600 hover:bg-ochre-500 text-stone-950 font-bold text-xs font-mono shadow transition flex items-center space-x-1">
+                            <i class="fa-solid fa-play mr-1"></i> Resonate Tone Vector
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ludic Resonance & Active Symbols Panel -->
+                <div class="lg:col-span-5 bg-panel border border-gray-800 rounded-xl p-6 flex flex-col justify-between space-y-6">
+                    <div>
+                        <h3 class="font-mono text-sm text-ochre-400 font-bold tracking-wider mb-3 flex items-center justify-between border-b border-gray-800 pb-2">
+                            <span>LUDIC RESONANCE PROFILE</span>
+                            <span id="active-symbol-count" class="text-xs bg-cave px-2 py-0.5 rounded text-gray-400 border border-gray-800">0 / 6 Active</span>
+                        </h3>
+
+                        <!-- Selected Glyphs Bar -->
+                        <div id="active-glyphs-container" class="flex flex-wrap gap-2 min-h-[60px] p-2 rounded-lg bg-cave border border-gray-800 mb-4 items-center">
+                            <span class="text-xs font-mono text-gray-600 italic px-2">Click symbols below to add to the Magic Circle...</span>
+                        </div>
+
+                        <!-- Caillois Play Spectrum Gauges -->
+                        <div class="space-y-3 font-mono text-xs">
+                            <div>
+                                <div class="flex justify-between text-gray-300 mb-1">
+                                    <span class="text-amber-400"><i class="fa-solid fa-shield-halved mr-1"></i> AGON (Rules & Competition)</span>
+                                    <span id="score-agon">0%</span>
+                                </div>
+                                <div class="w-full bg-cave rounded-full h-2 overflow-hidden border border-gray-800">
+                                    <div id="bar-agon" class="bg-amber-500 h-full w-0 transition-all duration-500"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-gray-300 mb-1">
+                                    <span class="text-blue-400"><i class="fa-solid fa-dice mr-1"></i> ALEA (Chance & Fate)</span>
+                                    <span id="score-alea">0%</span>
+                                </div>
+                                <div class="w-full bg-cave rounded-full h-2 overflow-hidden border border-gray-800">
+                                    <div id="bar-alea" class="bg-blue-500 h-full w-0 transition-all duration-500"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-gray-300 mb-1">
+                                    <span class="text-purple-400"><i class="fa-solid fa-masks-theater mr-1"></i> MIMICRY (Role & Shamanism)</span>
+                                    <span id="score-mimicry">0%</span>
+                                </div>
+                                <div class="w-full bg-cave rounded-full h-2 overflow-hidden border border-gray-800">
+                                    <div id="bar-mimicry" class="bg-purple-500 h-full w-0 transition-all duration-500"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-gray-300 mb-1">
+                                    <span class="text-emerald-400"><i class="fa-solid fa-dharmachakra mr-1"></i> ILINX (Vertigo & Flow)</span>
+                                    <span id="score-ilinx">0%</span>
+                                </div>
+                                <div class="w-full bg-cave rounded-full h-2 overflow-hidden border border-gray-800">
+                                    <div id="bar-ilinx" class="bg-emerald-500 h-full w-0 transition-all duration-500"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Derived Play State Lore -->
+                        <div id="sandbox-lore-box" class="mt-5 p-3 rounded-lg bg-cave/80 border border-ochre-900/60 text-xs font-mono text-ochre-200/90 leading-relaxed min-h-[80px]">
+                            <p class="text-gray-500 italic"><i class="fa-solid fa-info-circle mr-1"></i> Construct a glyph sequence to reveal Paleo-Ludic game state hypothesis.</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick Pick Selector -->
+                    <div>
+                        <h4 class="text-xs font-mono text-gray-400 mb-2">QUICK GLYPH PICKER</h4>
+                        <div id="sandbox-picker" class="grid grid-cols-8 gap-1.5 p-2 bg-cave rounded-lg border border-gray-800 max-h-36 overflow-y-auto">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="tab-theory" class="tab-content hidden space-y-6">
+            <div class="bg-panel border border-gray-800 rounded-xl p-6 md:p-8 space-y-6 max-w-4xl mx-auto leading-relaxed">
+                <div class="border-b border-ochre-900/60 pb-4">
+                    <span class="text-xs font-mono text-ochre-500">PROJECT LUDUS-32 // MONOGRAPH #01</span>
+                    <h2 class="text-2xl font-bold font-mono text-ochre-400 mt-1">The First Game Engine: Paleolithic Symbols and Homo Ludens</h2>
+                    <p class="text-xs text-gray-400 mt-1">By Dr. Aris Thorne (Institute for Paleo-Ludology) — Field Research Note</p>
+                </div>
+
+                <div class="prose prose-invert max-w-none text-sm text-gray-300 space-y-4">
+                    <p>
+                        In 1938, Dutch historian Johan Huizinga published <em>Homo Ludens: A Study of the Play-Element in Culture</em>, advancing a revolutionary thesis: <strong>play pre-dates human culture</strong>. Animals do not wait for speech or ritual to play; play is an primal, irreducible function of biological consciousness. Culture, Huizinga argued, does not create play—culture arises <em>in and as play</em>.
+                    </p>
+                    
+                    <blockquote class="p-4 rounded bg-cave border-l-4 border-ochre-600 font-mono text-xs text-ochre-200 my-4">
+                        "All play moves and has its being within a playground marked off beforehand materially or ideally... The arena, the card-table, the magic circle, the temple, the stage, the screen, the court of justice, are all in form and function play-grounds, i.e. forbidden spots, isolated, fenced-off, hallowed, within which an special rules hold good."
+                        <div class="text-right mt-1 text-gray-400">— Johan Huizinga, <em>Homo Ludens</em></div>
+                    </blockquote>
+
+                    <h3 class="text-base font-bold text-ochre-400 font-mono pt-2">1. The 32 Symbols as Pre-Linguistic Rule Cards</h3>
+                    <p>
+                        When paleoanthropologist <strong>Genevieve von Petzinger</strong> cataloged 52 cave sites across Ice Age Europe (40,000 BCE to 10,000 BCE), she uncovered something staggering: across 30,000 years, early <em>Homo sapiens</em> used a closed set of <strong>only 32 geometric shapes</strong>. They appear alongside animal imagery, but outnumber representational figures two to one.
+                    </p>
+                    <p>
+                        While mainstream archaeology frames these marks as territorial signs or early counting tallies, <strong>Project LUDUS-32</strong> proposes a deeper hypothesis: <em>The 32 signs represent the world's first portable game engine and rule vocabulary.</em> Before human syntax could write contracts or mythologies, geometric signs established the <strong>Magic Circle</strong>—the boundary of simulation.
+                    </p>
+
+                    <h3 class="text-base font-bold text-ochre-400 font-mono pt-2">2. Mapping to Caillois' Quadrumvirate of Play</h3>
+                    <p>
+                        French sociologist Roger Caillois extended Huizinga's work in <em>Man, Play and Games (1958)</em>, breaking play down into four fundamental archetypes:
+                    </p>
+                    <ul class="list-disc pl-5 space-y-2 text-xs font-mono text-gray-300">
+                        <li><strong class="text-amber-400">AGON (Competition & Skill):</strong> Represented by <em>Claviforms, Open Angles, Penniforms, and Scalariforms</em>. These shapes denote vector, strike, hierarchy, and turn-taking rules.</li>
+                        <li><strong class="text-blue-400">ALEA (Chance & Fate):</strong> Represented by <em>Cupules (pebble pits) and Dots</em>. Used as early randomness generators—casting bones or seeds into carved depressions inside the cave.</li>
+                        <li><strong class="text-purple-400">MIMICRY (Mask & Shamanic Simulation):</strong> Represented by <em>Aviforms, Finger Fluting, and Hand Stencils</em>. Marks that signify taking on the bird-spirit or altering identity inside the dark cave chamber.</li>
+                        <li><strong class="text-emerald-400">ILINX (Vertigo & Flow):</strong> Represented by <em>Spirals, Serpentines, and Zigzags</em>. Tranced-induced kinetic visual patterns carved on cave walls to induce sensory disorientation in flicker-lit caverns.</li>
+                    </ul>
+
+                    <h3 class="text-base font-bold text-ochre-400 font-mono pt-2">3. The ARG Hypothesis: The Paleolithic Holodeck</h3>
+                    <p>
+                        In deep, acoustically resonant cave chambers like Chauvet, Niaux, and El Castillo, flickering animal-fat lamps created dynamic shadows against undulating rock faces. When combined with geometric boundary markers (<em>Tectiforms</em> and <em>Quadrangles</em>), the cave functioned as humanity's original mixed-reality room.
+                    </p>
+                    <p class="italic text-ochre-300">
+                        The 32 signs were not static symbols; they were dynamic UI elements for ritual games that trained hunting bands in risk assessment, social reciprocity, and cosmological simulation long before the invention of the written word.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="tab-cipher" class="tab-content hidden space-y-6">
+            <div class="bg-panel border border-gray-800 rounded-xl p-6 space-y-6">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                    <div>
+                        <h2 class="font-mono text-lg font-bold text-ochre-400"><i class="fa-solid fa-key mr-2"></i>ARG CIPHER TRANSMISSIONS</h2>
+                        <p class="text-xs text-gray-400">Intercepted logs from Dr. Aris Thorne's field research at Chauvet Cave (2024–2026)</p>
+                    </div>
+                    <span class="text-xs font-mono px-2.5 py-1 rounded bg-red-950 text-red-400 border border-red-800 animate-pulse">CLASSIFIED // EYES ONLY</span>
+                </div>
+
+                <!-- Terminal Display Log Window -->
+                <div class="bg-cave border border-gray-800 rounded-lg p-4 font-mono text-xs space-y-4 h-96 overflow-y-auto" id="terminal-logs">
+                    <div class="text-gray-500">[SYSTEM] Initializing IPL Encryption Decoder v4.09...</div>
+                    <div class="text-gray-500">[SYSTEM] Connection established with Chauvet-Subsurface Node 7.</div>
+
+                    <!-- Log Item 1 -->
+                    <div class="p-3 bg-panel border-l-2 border-ochre-500 rounded">
+                        <div class="flex justify-between text-ochre-400 font-bold mb-1">
+                            <span>LOG_01: "THE FIRST BOUNDARY"</span>
+                            <span>40,000 BCE / Chauvet Cave</span>
+                        </div>
+                        <p class="text-gray-300 leading-relaxed">
+                            "We were wrong to look for grammar in the dots and tectiforms. They aren't words. They are game boundaries. When you paint a red circle around a stalagmite, you aren't describing the rock—you are creating a magic circle. Inside that ring, normal physical consequences are suspended. It is the birthplace of the game."
+                        </p>
+                    </div>
+
+                    <!-- Log Item 2 -->
+                    <div class="p-3 bg-panel border-l-2 border-amber-500 rounded">
+                        <div class="flex justify-between text-amber-400 font-bold mb-1">
+                            <span>LOG_02: "THE RESONANCE ACCIDENT"</span>
+                            <span>32,000 BCE / Castanet</span>
+                        </div>
+                        <p class="text-gray-300 leading-relaxed">
+                            "When we lined up the 32 symbols in sequence around the subterranean chamber, acoustic measurement showed a sharp standing wave at 110 Hz. The exact frequency known to induce prefrontal cortex downregulation. They weren't just playing games—the game engine was altering human brain waves."
+                        </p>
+                    </div>
+
+                    <!-- Log Item 3 -->
+                    <div class="p-3 bg-panel border-l-2 border-emerald-500 rounded">
+                        <div class="flex justify-between text-emerald-400 font-bold mb-1">
+                            <span>LOG_03: "UNLOCKED TRANSMISSION"</span>
+                            <span>[REQUIRES CIPHER UNLOCK]</span>
+                        </div>
+                        <p class="text-gray-400 italic">
+                            Hint: Construct a Magic Circle in the Sandbox combining <strong class="text-ochre-400">CIRCLE</strong> + <strong class="text-ochre-400">HAND STENCIL</strong> + <strong class="text-ochre-400">TECTIFORM</strong> + <strong class="text-ochre-400">SPIRAL</strong> to unlock Secret Transmission 04...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Intercept Cipher Tool -->
+                <div class="p-4 bg-cave border border-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="text-xs font-mono">
+                        <span class="text-gray-400">CIPHER KEY: </span>
+                        <span id="current-cipher-key" class="text-ochre-400 font-bold">LUDUS-INCOMPLETE</span>
+                    </div>
+                    <button id="check-secret-btn" class="px-4 py-2 rounded bg-ochre-700 hover:bg-ochre-600 text-stone-950 font-bold text-xs font-mono transition">
+                        <i class="fa-solid fa-lock-open mr-1"></i> Verify Magic Circle Code
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-panel border border-ochre-600/50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative space-y-6">
+            <!-- Close Button -->
+            <button id="close-modal-btn" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-cave border border-gray-700 text-gray-400 hover:text-white flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Modal Header -->
+            <div class="flex items-center space-x-4 border-b border-gray-800 pb-4">
+                <div id="modal-svg-container" class="w-16 h-16 rounded-xl bg-cave border border-ochre-700/60 p-2 flex items-center justify-center shadow-inner">
+                    <!-- Dynamic Large SVG -->
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h3 id="modal-title" class="font-mono text-xl font-bold text-ochre-400">Symbol Name</h3>
+                        <span id="modal-id" class="text-xs font-mono bg-ochre-950 text-ochre-300 border border-ochre-800 px-2 py-0.5 rounded">#01</span>
+                    </div>
+                    <p id="modal-archetype" class="text-xs font-mono text-gray-400 mt-1">Play Category Archetype</p>
+                </div>
+            </div>
+
+            <!-- Modal Body Sections -->
+            <div class="space-y-4 font-sans text-sm">
+                <!-- Archaeological Description -->
+                <div>
+                    <h4 class="text-xs font-mono text-ochre-500 font-bold uppercase tracking-wider mb-1"><i class="fa-solid fa-archway mr-1"></i> Archeological Context</h4>
+                    <p id="modal-archaeology" class="text-gray-300 text-xs leading-relaxed bg-cave p-3 rounded border border-gray-800">
+                        Description...
+                    </p>
+                </div>
+
+                <!-- Homo Ludens / Play Theory Connection -->
+                <div>
+                    <h4 class="text-xs font-mono text-amber-500 font-bold uppercase tracking-wider mb-1"><i class="fa-solid fa-chess-knight mr-1"></i> Homo Ludens & Play Theory Hypothesis</h4>
+                    <p id="modal-playtheory" class="text-ochre-100/90 text-xs leading-relaxed bg-ochre-950/40 p-3 rounded border border-ochre-900/60">
+                        Play theory analysis...
+                    </p>
+                </div>
+
+                <!-- ARG Field Log -->
+                <div>
+                    <h4 class="text-xs font-mono text-emerald-500 font-bold uppercase tracking-wider mb-1"><i class="fa-solid fa-terminal mr-1"></i> ARG Field Log Intercept</h4>
+                    <p id="modal-arglog" class="text-emerald-200/80 font-mono text-xs leading-relaxed bg-cave p-3 rounded border border-gray-800">
+                        ARG field note...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Modal Footer Action -->
+            <div class="flex justify-end space-x-3 border-t border-gray-800 pt-4">
+                <button id="modal-add-sandbox-btn" class="px-4 py-2 rounded bg-ochre-600 hover:bg-ochre-500 text-stone-950 font-bold text-xs font-mono transition flex items-center space-x-1">
+                    <i class="fa-solid fa-plus mr-1"></i> Add to Magic Circle Sandbox
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <footer class="border-t border-gray-900 bg-cave/90 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-gray-500 gap-2">
+            <div>CODEX LUDENS // Based on research by Genevieve von Petzinger & Johan Huizinga</div>
+            <div class="flex items-center space-x-4">
+                <span>32 Signs of the Upper Paleolithic</span>
+                <span>•</span>
+                <span class="text-ochre-500">ARG Interactive Terminal</span>
+            </div>
+        </div>
+    </footer>
+
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const SYMBOLS_DATA = [
+            {
+                id: 1,
+                name: "Aviform",
+                svg: `<path d="M5 25 Q 15 10, 25 25 Q 35 10, 45 25" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                archetype: "Mimicry (Role/Shamanism)",
+                caillois: { agon: 20, alea: 10, mimicry: 80, ilinx: 40 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Chauvet, Planchard, Pech Merle",
+                archaeology: "A bird-shaped sign resembling a stretched-out 'W' or wings in flight. Frequently carved in dark, hard-to-reach niches.",
+                playTheory: "Relates to Caillois' MIMICRY (Shamanic metamorphosis). The player/shaman adopts the persona of the avian spirit to transcend physical limits inside the magic circle.",
+                argLog: "Chauvet Log: 'The aviform mark always anchors the highest ceiling point. It marks the flight vector of the player entering ecstasy.'"
+            },
+            {
+                id: 2,
+                name: "Circle",
+                svg: `<circle cx="25" cy="25" r="16" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                archetype: "Boundary / Magic Circle",
+                caillois: { agon: 10, alea: 30, mimicry: 50, ilinx: 20 },
+                period: "Aurignacian to Magdalenian",
+                sites: "El Castillo, Chauvet, Niaux",
+                archaeology: "Closed circular geometric outlines in red ochre or charcoal, often surrounding natural limestone bosses or rock features.",
+                playTheory: "The literal embodiment of Huizinga's MAGIC CIRCLE. Defines a sanctuary set apart from everyday survival where new rules apply.",
+                argLog: "Chauvet Log: 'The circle is not a picture. It is a spatial container. Once drawn, everything inside it is in-game.'"
+            },
+            {
+                id: 3,
+                name: "Claviform",
+                svg: `<path d="M25 8 V 42 M25 16 Q 38 16, 25 26" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 85, alea: 15, mimicry: 10, ilinx: 10 },
+                period: "Gravettian to Magdalenian",
+                sites: "Altamira, Niaux, Les Trois-Frères",
+                archaeology: "Club-shaped or key-shaped symbol consisting of a vertical line with a distinct lateral swell near the top.",
+                playTheory: "Represents AGON (Intervention tools & rule enforcement). Symbolizes the physical batons or ceremonial instruments used to signal turn-taking or competition.",
+                argLog: "Niaux Log: 'Claviforms line the narrow corridors leading to the main chamber like referees marking penalty bounds.'"
+            },
+            {
+                id: 4,
+                name: "Cordiform",
+                svg: `<path d="M25 38 C 10 25, 10 12, 25 18 C 40 12, 40 25, 25 38 Z" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                archetype: "Lusory Action",
+                caillois: { agon: 30, alea: 20, mimicry: 60, ilinx: 30 },
+                period: "Solutrean to Magdalenian",
+                sites: "Oikos, El Pindal",
+                archaeology: "Heart-shaped glyph, rare but distinct in late Ice Age sites in Northern Spain.",
+                playTheory: "Represents Organic Vitality and Lusus (the spirit of play). Suits' 'Lusory Attitude'—the willingness to accept rules for the joy of play.",
+                argLog: "El Pindal Log: 'The cordiform marks the central heart of the ritual play arena where human emotion is heightened.'"
+            },
+            {
+                id: 5,
+                name: "Crosshatch",
+                svg: `<path d="M12 12 L 38 38 M 38 12 L 12 38 M 12 25 H 38 M 25 12 V 38" stroke="#f59e0b" stroke-width="2.5" fill="none"/>`,
+                archetype: "Boundary / Magic Circle",
+                caillois: { agon: 70, alea: 40, mimicry: 20, ilinx: 10 },
+                period: "Pre-Aurignacian (Blombos) to Magdalenian",
+                sites: "Blombos Cave, Gorham's Cave, Lascaux",
+                archaeology: "Grid of intersecting diagonal or perpendicular lines. One of humanity's oldest recorded marks (dating back 73,000+ years).",
+                playTheory: "Represents Spatial Rule Grids & Playboards. The grid isolates spatial coordinates, creating the matrix for board games and game boards.",
+                argLog: "Blombos Log: 'The crosshatch is humanity's oldest tic-tac-toe grid. It proves rule-based spatial thinking before art.'"
+            },
+            {
+                id: 6,
+                name: "Cruciform",
+                svg: `<path d="M25 8 V 42 M 8 25 H 42" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 60, alea: 30, mimicry: 20, ilinx: 10 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Chauvet, La Pasiega",
+                archaeology: "Simple cross shape formed by two intersecting perpendicular strokes.",
+                playTheory: "Cardinal Anchors in the Play Space. Functions as the nexus point or starting position (home space) in competitive play setups.",
+                argLog: "La Pasiega Log: 'Cruciforms are always located at threshold junctions where cave tunnels diverge.'"
+            },
+            {
+                id: 7,
+                name: "Cupule",
+                svg: `<circle cx="15" cy="18" r="4" fill="#f59e0b"/><circle cx="32" cy="16" r="5" fill="#f59e0b"/><circle cx="22" cy="32" r="4.5" fill="#f59e0b"/>`,
+                archetype: "Alea (Chance/Pits)",
+                caillois: { agon: 20, alea: 90, mimicry: 10, ilinx: 20 },
+                period: "Pre-Aurignacian to Magdalenian",
+                sites: "Daraki-Chattan, La Ferrassie, El Castillo",
+                archaeology: "Hemispherical cup-like depressions pounded into cave walls or rock slabs, often arranged in clusters.",
+                playTheory: "ALEA (Randomness & Fate). Used as early pebble-pits or dice-rolling depressions for games of chance and ritual divination.",
+                argLog: "La Ferrassie Log: 'Cupule slabs placed over Neanderthal graves indicate the first known games of chance with bones.'"
+            },
+            {
+                id: 8,
+                name: "Dot",
+                svg: `<circle cx="25" cy="25" r="7" fill="#f59e0b"/>`,
+                archetype: "Lusory Action",
+                caillois: { agon: 40, alea: 70, mimicry: 10, ilinx: 10 },
+                period: "Aurignacian to Magdalenian",
+                sites: "El Castillo, Chauvet, Marsoulas",
+                archaeology: "Solid red or black pigment dots, often applied via blow-pipe or fingertip in deliberate lines or dense clusters.",
+                playTheory: "The Atomic Game Token or Score Point. Represents discrete units of value, player tokens, or quantized game moves.",
+                argLog: "Marsoulas Log: 'A series of 30 red dots along the bison spine acts as a turn counter or score tracker.'"
+            },
+            {
+                id: 9,
+                name: "Finger Fluting",
+                svg: `<path d="M12 10 Q 18 25, 12 40 M 22 10 Q 28 25, 22 40 M 32 10 Q 38 25, 32 40" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                archetype: "Ilinx (Vertigo/Flow)",
+                caillois: { agon: 10, alea: 10, mimicry: 40, ilinx: 85 },
+                period: "Aurignacian to Gravettian",
+                sites: "Koonalda, Rouffignac, Gargas",
+                archaeology: "Parallel grooves dragged by human fingers across soft clay cave walls and ceilings.",
+                playTheory: "ILINX (Vertigo & Flow state). Kinetic tactile play that leaves a permanent trace of bodily movement through dark spaces.",
+                argLog: "Rouffignac Log: 'Fluting paths carved high on dark ceilings suggest children lifted on shoulders in ecstatic sensory play.'"
+            },
+            {
+                id: 10,
+                name: "Flabelliform",
+                svg: `<path d="M25 40 L 10 12 M 25 40 L 18 10 M 25 40 L 25 8 M 25 40 L 32 10 M 25 40 L 40 12" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>`,
+                archetype: "Mimicry (Role/Shamanism)",
+                caillois: { agon: 30, alea: 10, mimicry: 75, ilinx: 30 },
+                period: "Solutrean to Magdalenian",
+                sites: "Lascaux, Cosquer",
+                archaeology: "Fan-shaped glyph radiating outwards from a central point or stem.",
+                playTheory: "Performance Display & Masking. Represents the ceremonial fan or plumage used in ritual mimicry and dramatic performance.",
+                argLog: "Cosquer Log: 'Flabelliform signs highlight acoustic sweet spots where animal voice mimicry echoes loudest.'"
+            },
+            {
+                id: 11,
+                name: "Half-Circle",
+                svg: `<path d="M10 30 A 15 15 0 0 1 40 30 Z" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                archetype: "Boundary / Magic Circle",
+                caillois: { agon: 30, alea: 40, mimicry: 30, ilinx: 20 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Chauvet, Covalanas",
+                archaeology: "Semicircular arc shape, either oriented upwards as a bowl or downwards as a dome.",
+                playTheory: "The Liminal Horizon / Play Gateway. Represents half-in/half-out states of play—the threshold between real life and ludic illusion.",
+                argLog: "Covalanas Log: 'Half-circles placed near water pools mark where player actions transition into magical consequences.'"
+            },
+            {
+                id: 12,
+                name: "Hand Stencil",
+                svg: `<path d="M15 38 V 22 M 20 38 V 14 M 26 38 V 10 M 32 38 V 16 M 37 38 V 24" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/><circle cx="25" cy="25" r="20" stroke="#f59e0b" stroke-dasharray="2 3" fill="none"/>`,
+                archetype: "Lusory Action",
+                caillois: { agon: 40, alea: 20, mimicry: 80, ilinx: 30 },
+                period: "Aurignacian to Gravettian",
+                sites: "Gargas, El Castillo, Chauvet",
+                archaeology: "Negative hand silhouette made by placing a palm on the rock and spraying pigment around it.",
+                playTheory: "The Lusory Player Signature: 'I Enter the Game'. Bernard Suits' definition of game entry—the player explicitly signing on to the game rules.",
+                argLog: "Gargas Log: 'Folded finger hand stencils are not mutilated hands; they are a silent sign language for cave games.'"
+            },
+            {
+                id: 13,
+                name: "Lines",
+                svg: `<path d="M12 10 V 40 M 20 10 V 40 M 28 10 V 40 M 36 10 V 40" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 70, alea: 30, mimicry: 10, ilinx: 10 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Niaux, Font-de-Gaume",
+                archaeology: "Parallel or solitary vertical strokes painted or engraved on wall surfaces.",
+                playTheory: "Temporal Tracks & Sequential Turns. Defines turn sequence, game rounds, or distance vectors in competitive play.",
+                argLog: "Niaux Log: 'Vertical lines drawn in sets of four mark time intervals during subterranean endurance games.'"
+            },
+            {
+                id: 14,
+                name: "Open Angle",
+                svg: `<path d="M10 18 L 25 32 L 40 18" stroke="#f59e0b" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 80, alea: 20, mimicry: 10, ilinx: 20 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Chauvet, El Castillo, Le Portel",
+                archaeology: "V-shaped chevron sign pointing in a specific direction.",
+                playTheory: "Directional Vectors & Rule Trajectories. Indicates dynamic movement, targets, or forbidden directions inside the play space.",
+                argLog: "Le Portel Log: 'Chevrons etched into stone floor tiles act as directional arrows for ceremonial tag games.'"
+            },
+            {
+                id: 15,
+                name: "Oval",
+                svg: `<ellipse cx="25" cy="25" rx="18" ry="12" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                archetype: "Boundary / Magic Circle",
+                caillois: { agon: 20, alea: 40, mimicry: 40, ilinx: 20 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Pech Merle, La Pasiega",
+                archaeology: "Elongated enclosed loop, distinct from a perfect circle.",
+                playTheory: "The Cosmic Egg / Game Arena. Represents an elongated play field (like an oval court or stadium) that concentrates tension.",
+                argLog: "Pech Merle Log: 'Ovals drawn around dappled horses designate the protective magic boundary for game rituals.'"
+            },
+            {
+                id: 16,
+                name: "Pectiform",
+                svg: `<path d="M8 18 H 42 M 12 18 V 34 M 20 18 V 34 M 28 18 V 34 M 36 18 V 34" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 85, alea: 30, mimicry: 10, ilinx: 10 },
+                period: "Solutrean to Magdalenian",
+                sites: "Altamira, Les Trois-Frères",
+                archaeology: "Comb-shaped sign consisting of a main horizontal bar with multiple downward vertical teeth.",
+                playTheory: "Scorekeeping & Point Tallying. The earliest scorekeeping device—recording game outcomes or competitive points.",
+                argLog: "Altamira Log: 'Pectiform signs on chamber entrances record winning records of ritual clan rivalries.'"
+            },
+            {
+                id: 17,
+                name: "Penniform",
+                svg: `<path d="M25 8 V 42 M 25 18 L 12 12 M 25 26 L 12 20 M 25 18 L 38 12 M 25 26 L 38 20" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 75, alea: 20, mimicry: 30, ilinx: 20 },
+                period: "Solutrean to Magdalenian",
+                sites: "Niaux, Font-de-Gaume",
+                archaeology: "Feather-shaped sign with a central spine and slanting side barbs.",
+                playTheory: "Agonal Velocity & Arrow Physics. Represents speed, projectile trajectories, and target marksmanship rules.",
+                argLog: "Font-de-Gaume Log: 'Penniform signs pointed at bison targets indicate scoring zones for spear-thrower games.'"
+            },
+            {
+                id: 18,
+                name: "Positive Hand",
+                svg: `<path d="M15 36 V 22 M 20 36 V 14 M 26 36 V 10 M 32 36 V 16 M 37 36 V 24 M 15 36 H 37 V 38 H 15 Z" fill="#f59e0b"/>`,
+                archetype: "Lusory Action",
+                caillois: { agon: 50, alea: 10, mimicry: 60, ilinx: 20 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Chauvet, Pech Merle",
+                archaeology: "Direct print made by coating the human palm in ochre and pressing it against the cave surface.",
+                playTheory: "Direct Lusory Touch ('Tag!'). The act of physical contact that changes game state, marking objects or players as active.",
+                argLog: "Pech Merle Log: 'Positive handprints placed over stalagmites mark active power nodes in subterranean games.'"
+            },
+            {
+                id: 19,
+                name: "Quadrangle",
+                svg: `<rect x="10" y="10" width="30" height="30" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                archetype: "Boundary / Magic Circle",
+                caillois: { agon: 80, alea: 20, mimicry: 10, ilinx: 10 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Lascaux, El Castillo, La Pasiega",
+                archaeology: "Four-sided rectangular or square enclosed geometric shape, sometimes subdivided into interior cells.",
+                playTheory: "The Game Court / Board Matrix. The fundamental layout for indoor/outdoor game arenas, courts, and game boards.",
+                argLog: "Lascaux Log: 'Multi-colored quadrangles painted beneath the Great Black Bull resemble board game layouts.'"
+            },
+            {
+                id: 20,
+                name: "Reniform",
+                svg: `<path d="M20 10 C 5 15, 5 35, 20 40 C 35 40, 25 25, 20 10 Z" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                archetype: "Mimicry (Role/Shamanism)",
+                caillois: { agon: 20, alea: 30, mimicry: 70, ilinx: 30 },
+                period: "Solutrean to Magdalenian",
+                sites: "Covalanas, Pasiega",
+                archaeology: "Kidney-shaped or bean-shaped rounded symbol.",
+                playTheory: "Organ of Transformation & Secret Rooms. Denotes hidden passages or secret game zones requiring special initiation.",
+                argLog: "Pasiega Log: 'Reniforms guard squeezed crawlspaces where solo initiation games took place.'"
+            },
+            {
+                id: 21,
+                name: "Scalariform",
+                svg: `<path d="M16 8 V 42 M 34 8 V 42 M 16 15 H 34 M 16 25 H 34 M 16 35 H 34" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 90, alea: 10, mimicry: 20, ilinx: 30 },
+                period: "Gravettian to Magdalenian",
+                sites: "La Pasiega, Altamira",
+                archaeology: "Ladder-like symbol with two parallel uprights connected by transverse rungs.",
+                playTheory: "Levels of Progression & Escalation. The concept of leveling up—moving through game tiers or climbing social ranks in play.",
+                argLog: "La Pasiega Log: 'Scalariform ladders drawn on sloped cave floors map the stages of ritual ascent.'"
+            },
+            {
+                id: 22,
+                name: "Segmented Line",
+                svg: `<path d="M8 25 H 14 M 20 25 H 26 M 32 25 H 38 M 44 25 H 50" stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 60, alea: 40, mimicry: 10, ilinx: 10 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Chauvet, Niaux",
+                archaeology: "Line broken into regular spaced dashes or segments.",
+                playTheory: "Quantized Movement & Grid Steps. Turn-based distance intervals—the ancestor of board game movement spaces.",
+                argLog: "Chauvet Log: 'Segmented lines along stone ledges indicate step-by-step movement constraints.'"
+            },
+            {
+                id: 23,
+                name: "Serpentine",
+                svg: `<path d="M8 25 Q 18 10, 25 25 T 42 25" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                archetype: "Ilinx (Vertigo/Flow)",
+                caillois: { agon: 20, alea: 30, mimicry: 40, ilinx: 80 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Rouffignac, Cosquer",
+                archaeology: "Wavy, snake-like undulating line carved or painted along cave surfaces.",
+                playTheory: "ILINX (Flow State & Fluid Movement). Represents fluid movement, obstacle avoidance, and dynamic navigation games.",
+                argLog: "Rouffignac Log: 'Serpentines follow subterranean floor streams, mapping water navigation mini-games.'"
+            },
+            {
+                id: 24,
+                name: "Spiral",
+                svg: `<path d="M25 25 m 0 0 a 3 3 0 0 1 3 3 a 6 6 0 0 1 -6 6 a 10 10 0 0 1 -10 -10 a 15 15 0 0 1 15 -15" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                archetype: "Ilinx (Vertigo/Flow)",
+                caillois: { agon: 10, alea: 20, mimicry: 50, ilinx: 95 },
+                period: "Solutrean to Magdalenian",
+                sites: "Gavrinis, Les Trois-Frères",
+                archaeology: "Coiled line radiating out from a central point. Exceptionally potent symbol in megalithic and late Ice Age contexts.",
+                playTheory: "The Vortex of Vertigo (Eugen Fink's 'Oasis of Happiness'). Induces psychological vertigo and deep trance-play states.",
+                argLog: "Gavrinis Log: 'Spinning in front of the illuminated stone spiral produces intense phosphene game hallucinations.'"
+            },
+            {
+                id: 25,
+                name: "Spliform",
+                svg: `<path d="M12 12 L 38 38 M 38 12 L 12 38 M 12 25 L 25 12 L 38 25 L 25 38 Z" stroke="#f59e0b" stroke-width="2.5" fill="none"/>`,
+                archetype: "Boundary / Magic Circle",
+                caillois: { agon: 50, alea: 50, mimicry: 20, ilinx: 20 },
+                period: "Solutrean to Magdalenian",
+                sites: "Lascaux, El Castillo",
+                archaeology: "Net-like or mesh-like interconnected lattice sign.",
+                playTheory: "Interlocking Game Systems & Entrapment. Defines rule webs, capture traps, and systemic game conditions.",
+                argLog: "Lascaux Log: 'Spliform mesh drawings painted over animal tracks designate target capture zones in roleplay.'"
+            },
+            {
+                id: 26,
+                name: "Symmetric Trefoil",
+                svg: `<path d="M25 12 A 7 7 0 0 1 32 22 A 7 7 0 0 1 25 32 A 7 7 0 0 1 18 22 A 7 7 0 0 1 25 12 Z M 16 30 A 7 7 0 0 1 25 32 M 34 30 A 7 7 0 0 1 25 32" stroke="#f59e0b" stroke-width="2.5" fill="none"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 70, alea: 40, mimicry: 30, ilinx: 10 },
+                period: "Magdalenian",
+                sites: "Niaux, Les Trois-Frères",
+                archaeology: "Three-lobed symmetrical leaf-like or clover-like design.",
+                playTheory: "Triadic Agon / Multi-Team Balance. Represents three-player or three-faction game balance dynamics.",
+                argLog: "Niaux Log: 'Trefoils mark three-way team balance points in ritual competitive dances.'"
+            },
+            {
+                id: 27,
+                name: "Tectiform",
+                svg: `<path d="M10 24 L 25 10 L 40 24 M 18 24 V 40 M 32 24 V 40 M 10 24 H 40" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                archetype: "Boundary / Magic Circle",
+                caillois: { agon: 60, alea: 20, mimicry: 50, ilinx: 10 },
+                period: "Solutrean to Magdalenian",
+                sites: "Font-de-Gaume, Les Eyzies, Altamira",
+                archaeology: "Roof-shaped or hut-shaped sign consisting of a pitched top on supporting vertical posts.",
+                playTheory: "The Sanctuary of Rules / Base Home. Huizinga's concept of 'Safe Zone' or 'Home Base' where players are immune from tag.",
+                argLog: "Font-de-Gaume Log: 'Tectiforms drawn at cave entrances represent the boundary between wild nature and civil play.'"
+            },
+            {
+                id: 28,
+                name: "Triangle",
+                svg: `<polygon points="25,10 10,38 40,38" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 75, alea: 20, mimicry: 30, ilinx: 10 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Chauvet, Tit-Mellil",
+                archaeology: "Three-sided polygon, painted or deeply incised into rock face.",
+                playTheory: "Focal Point of Tension / Triad. The fundamental geometric structure for conflict resolution and triadic choice.",
+                argLog: "Chauvet Log: 'Triangles placed at dead-end alcoves designate final showdown spaces for ritual duals.'"
+            },
+            {
+                id: 29,
+                name: "Uniform",
+                svg: `<line x1="25" y1="10" x2="25" y2="40" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 50, alea: 30, mimicry: 10, ilinx: 10 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Ubiquitous across all 52 sites",
+                archaeology: "Single, isolated linear stroke.",
+                playTheory: "The Atomic Binary State / Switch. Represents ON/OFF, active/inactive game status toggle.",
+                argLog: "Global Log: 'The uniform stroke is the binary digit 1 of Paleolithic game engines.'"
+            },
+            {
+                id: 30,
+                name: "W-sign",
+                svg: `<path d="M8 15 L 18 35 L 25 22 L 32 35 L 42 15" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                archetype: "Agon (Competition/Rules)",
+                caillois: { agon: 65, alea: 30, mimicry: 20, ilinx: 30 },
+                period: "Solutrean to Magdalenian",
+                sites: "Lascaux, Pech Merle",
+                archaeology: "Distinctive double-v chevron sign forming the letter 'W'.",
+                playTheory: "Dual Wave / Oscillating Counterbalance. Represents back-and-forth momentum shifts between rival game teams.",
+                argLog: "Lascaux Log: 'W-signs placed along game corridors mark momentum shifts in clan ritual trials.'"
+            },
+            {
+                id: 31,
+                name: "Y-sign",
+                svg: `<path d="M12 12 L 25 25 M 38 12 L 25 25 M 25 25 V 40" stroke="#f59e0b" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
+                archetype: "Lusory Action",
+                caillois: { agon: 60, alea: 50, mimicry: 20, ilinx: 20 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Chauvet, El Castillo",
+                archaeology: "Branching three-point junction sign resembling a capital 'Y'.",
+                playTheory: "Decision Node / Forking Pathway. Represents strategic choice points where players must commit to one of two rule paths.",
+                argLog: "El Castillo Log: 'The Y-sign marks literal tunnel forks where players chose high-risk vs low-risk game routes.'"
+            },
+            {
+                id: 32,
+                name: "Zigzag",
+                svg: `<path d="M8 12 L 22 20 L 10 28 L 38 36" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                archetype: "Ilinx (Vertigo/Flow)",
+                caillois: { agon: 40, alea: 40, mimicry: 20, ilinx: 90 },
+                period: "Aurignacian to Magdalenian",
+                sites: "Blombos, Chauvet, Niaux",
+                archaeology: "Serrated multi-directional lightning-like line pattern.",
+                playTheory: "Disruption & Chaos / Hazard Rules. Represents environmental hazards, random lightning, or sudden state disruptions in play.",
+                argLog: "Chauvet Log: 'Zigzag lines act as hazard boundaries. Crossing a zigzag during a game triggers instant elimination.'"
+            }
+        ];
+
+        let activeSandboxSymbols = [];
+        let audioCtx = null;
+        let isAudioOn = false;
+
+        // Initialize Web Audio API on demand
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Play synth tone when selecting symbols or resonating circle
+        function playTone(freq = 220, type = 'sine', duration = 0.4) {
+            if (!isAudioOn) return;
+            initAudio();
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.error("Audio error:", e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderGrid(SYMBOLS_DATA);
+            renderSandboxPicker();
+            setupTabNavigation();
+            setupSearchAndFilter();
+            setupModalHandlers();
+            setupAudioToggle();
+            setupSandboxControls();
+            drawMagicCircleCanvas();
+        });
+
+        // Render Cards Grid
+        function renderGrid(symbols) {
+            const grid = document.getElementById('symbols-grid');
+            const visibleCount = document.getElementById('visible-count');
+            grid.innerHTML = '';
+            visibleCount.innerText = symbols.length;
+
+            if (symbols.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-gray-500 font-mono text-sm">No Paleolithic signs match your search parameters.</div>`;
+                return;
+            }
+
+            symbols.forEach(sym => {
+                const card = document.createElement('div');
+                card.className = "rune-card bg-panel border border-gray-800 hover:border-ochre-600/70 rounded-xl p-3 flex flex-col items-center justify-between transition cursor-pointer group shadow-md hover:shadow-ochre-900/20";
+                card.onclick = () => openModal(sym.id);
+
+                card.innerHTML = `
+                    <div class="w-full flex justify-between items-center text-[10px] font-mono text-gray-500 mb-1">
+                        <span>#${sym.id.toString().padStart(2, '0')}</span>
+                        <span class="truncate max-w-[90px] text-gray-400">${sym.archetype.split(' ')[0]}</span>
+                    </div>
+                    <div class="w-16 h-16 my-2 bg-cave border border-gray-800 rounded-lg p-2 flex items-center justify-center">
+                        <svg viewBox="0 0 50 50" class="w-full h-full rune-svg">
+                            ${sym.svg}
+                        </svg>
+                    </div>
+                    <div class="text-center w-full mt-1">
+                        <h4 class="font-mono text-xs font-bold text-gray-200 group-hover:text-ochre-400 transition truncate">${sym.name}</h4>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function setupSearchAndFilter() {
+            const searchInput = document.getElementById('symbol-search');
+            const archetypeFilter = document.getElementById('archetype-filter');
+
+            function filterData() {
+                const query = searchInput.value.toLowerCase().trim();
+                const archetype = archetypeFilter.value;
+
+                const filtered = SYMBOLS_DATA.filter(sym => {
+                    const matchesSearch = sym.name.toLowerCase().includes(query) ||
+                                          sym.archetype.toLowerCase().includes(query) ||
+                                          sym.playTheory.toLowerCase().includes(query) ||
+                                          sym.archaeology.toLowerCase().includes(query);
+
+                    const matchesArchetype = (archetype === 'all') || (sym.archetype === archetype);
+
+                    return matchesSearch && matchesArchetype;
+                });
+
+                renderGrid(filtered);
+            }
+
+            searchInput.addEventListener('input', filterData);
+            archetypeFilter.addEventListener('change', filterData);
+        }
+
+        function setupTabNavigation() {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => {
+                        t.classList.remove('active', 'bg-ochre-600/20', 'text-ochre-400', 'border', 'border-ochre-500/40');
+                        t.classList.add('text-gray-400');
+                    });
+                    contents.forEach(c => c.classList.add('hidden'));
+
+                    tab.classList.add('active', 'bg-ochre-600/20', 'text-ochre-400', 'border', 'border-ochre-500/40');
+                    tab.classList.remove('text-gray-400');
+
+                    const targetId = `tab-${tab.dataset.tab}`;
+                    document.getElementById(targetId).classList.remove('hidden');
+
+                    if (tab.dataset.tab === 'magic-circle') {
+                        drawMagicCircleCanvas();
+                    }
+                });
+            });
+        }
+
+        let currentModalSymbol = null;
+
+        function openModal(id) {
+            const sym = SYMBOLS_DATA.find(s => s.id === id);
+            if (!sym) return;
+            currentModalSymbol = sym;
+
+            document.getElementById('modal-svg-container').innerHTML = `<svg viewBox="0 0 50 50" class="w-12 h-12">${sym.svg}</svg>`;
+            document.getElementById('modal-title').innerText = sym.name;
+            document.getElementById('modal-id').innerText = `#${sym.id.toString().padStart(2, '0')}`;
+            document.getElementById('modal-archetype').innerText = `Archetype: ${sym.archetype} | Era: ${sym.period}`;
+            document.getElementById('modal-archaeology').innerHTML = `<strong>Key Sites:</strong> ${sym.sites}<br>${sym.archaeology}`;
+            document.getElementById('modal-playtheory').innerText = sym.playTheory;
+            document.getElementById('modal-arglog').innerText = sym.argLog;
+
+            const modal = document.getElementById('detail-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+
+            playTone(330, 'triangle', 0.2);
+        }
+
+        function setupModalHandlers() {
+            const modal = document.getElementById('detail-modal');
+            const closeBtn = document.getElementById('close-modal-btn');
+            const addSandboxBtn = document.getElementById('modal-add-sandbox-btn');
+
+            closeBtn.onclick = () => {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+            };
+
+            addSandboxBtn.onclick = () => {
+                if (currentModalSymbol) {
+                    addToSandbox(currentModalSymbol.id);
+                    modal.classList.add('opacity-0', 'pointer-events-none');
+                    // Switch to sandbox tab
+                    document.querySelector('[data-tab="magic-circle"]').click();
+                }
+            };
+        }
+
+        function renderSandboxPicker() {
+            const picker = document.getElementById('sandbox-picker');
+            picker.innerHTML = '';
+
+            SYMBOLS_DATA.forEach(sym => {
+                const btn = document.createElement('button');
+                btn.className = "p-1.5 rounded bg-panel border border-gray-800 hover:border-ochre-500 flex items-center justify-center transition";
+                btn.title = sym.name;
+                btn.onclick = () => addToSandbox(sym.id);
+                btn.innerHTML = `<svg viewBox="0 0 50 50" class="w-5 h-5">${sym.svg}</svg>`;
+                picker.appendChild(btn);
+            });
+        }
+
+        function addToSandbox(id) {
+            if (activeSandboxSymbols.length >= 6) {
+                alert("The Magic Circle can hold a maximum of 6 symbols simultaneously.");
+                return;
+            }
+            const sym = SYMBOLS_DATA.find(s => s.id === id);
+            if (sym) {
+                activeSandboxSymbols.push(sym);
+                updateSandboxUI();
+                playTone(200 + (activeSandboxSymbols.length * 50), 'sine', 0.3);
+            }
+        }
+
+        function removeFromSandbox(index) {
+            activeSandboxSymbols.splice(index, 1);
+            updateSandboxUI();
+            playTone(150, 'sawtooth', 0.2);
+        }
+
+        function updateSandboxUI() {
+            const container = document.getElementById('active-glyphs-container');
+            const countLabel = document.getElementById('active-symbol-count');
+            countLabel.innerText = `${activeSandboxSymbols.length} / 6 Active`;
+
+            if (activeSandboxSymbols.length === 0) {
+                container.innerHTML = `<span class="text-xs font-mono text-gray-600 italic px-2">Click symbols below to add to the Magic Circle...</span>`;
+            } else {
+                container.innerHTML = '';
+                activeSandboxSymbols.forEach((sym, idx) => {
+                    const tag = document.createElement('div');
+                    tag.className = "flex items-center space-x-1.5 bg-ochre-950/80 border border-ochre-700/60 rounded px-2 py-1 text-xs font-mono text-ochre-300";
+                    tag.innerHTML = `
+                        <svg viewBox="0 0 50 50" class="w-4 h-4">${sym.svg}</svg>
+                        <span>${sym.name}</span>
+                        <button onclick="removeFromSandbox(${idx})" class="text-gray-500 hover:text-red-400 ml-1">×</button>
+                    `;
+                    container.appendChild(tag);
+                });
+            }
+
+            calculateCailloisScores();
+            drawMagicCircleCanvas();
+            checkCipherUnlock();
+        }
+
+        function calculateCailloisScores() {
+            if (activeSandboxSymbols.length === 0) {
+                document.getElementById('score-agon').innerText = "0%";
+                document.getElementById('score-alea').innerText = "0%";
+                document.getElementById('score-mimicry').innerText = "0%";
+                document.getElementById('score-ilinx').innerText = "0%";
+
+                document.getElementById('bar-agon').style.width = "0%";
+                document.getElementById('bar-alea').style.width = "0%";
+                document.getElementById('bar-mimicry').style.width = "0%";
+                document.getElementById('bar-ilinx').style.width = "0%";
+
+                document.getElementById('sandbox-lore-box').innerHTML = `<p class="text-gray-500 italic"><i class="fa-solid fa-info-circle mr-1"></i> Construct a glyph sequence to reveal Paleo-Ludic game state hypothesis.</p>`;
+                return;
+            }
+
+            let agon = 0, alea = 0, mimicry = 0, ilinx = 0;
+            activeSandboxSymbols.forEach(s => {
+                agon += s.caillois.agon;
+                alea += s.caillois.alea;
+                mimicry += s.caillois.mimicry;
+                ilinx += s.caillois.ilinx;
+            });
+
+            const total = agon + alea + mimicry + ilinx;
+            const pAgon = Math.round((agon / total) * 100);
+            const pAlea = Math.round((alea / total) * 100);
+            const pMimicry = Math.round((mimicry / total) * 100);
+            const pIlinx = Math.round((ilinx / total) * 100);
+
+            document.getElementById('score-agon').innerText = `${pAgon}%`;
+            document.getElementById('score-alea').innerText = `${pAlea}%`;
+            document.getElementById('score-mimicry').innerText = `${pMimicry}%`;
+            document.getElementById('score-ilinx').innerText = `${pIlinx}%`;
+
+            document.getElementById('bar-agon').style.width = `${pAgon}%`;
+            document.getElementById('bar-alea').style.width = `${pAlea}%`;
+            document.getElementById('bar-mimicry').style.width = `${pMimicry}%`;
+            document.getElementById('bar-ilinx').style.width = `${pIlinx}%`;
+
+            // Derive dynamic Ludic Game State Lore
+            let dominant = "Balanced Ludic Matrix";
+            if (pAgon >= 40) dominant = "Agonal Arena (Competitive Rule-Bound Tournament)";
+            else if (pAlea >= 40) dominant = "Aleatory Sanctuary (Divination & Fate-based Play)";
+            else if (pMimicry >= 40) dominant = "Shamanic Theater (Identity Alteration & Mimicry)";
+            else if (pIlinx >= 40) dominant = "Ecstatic Chamber (Trance Vertigo & Sensory Overload)";
+
+            document.getElementById('sandbox-lore-box').innerHTML = `
+                <div class="text-ochre-400 font-bold mb-1"><i class="fa-solid fa-fire-flame-curved mr-1"></i> DERIVED GAME ENGINE STATE: ${dominant}</div>
+                <p class="text-gray-300">Combining these ${activeSandboxSymbols.length} symbols constructs a specialized Paleolithic ludic circle designed to alter cognitive brain states and regulate clan social behavior through structured ritual.</p>
+            `;
+        }
+
+        function drawMagicCircleCanvas() {
+            const canvas = document.getElementById('circle-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = 110;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw outer magical boundary rings
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius + 15, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(217, 119, 6, 0.2)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(245, 158, 11, 0.6)";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 6]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Center icon or prompt
+            const label = document.getElementById('circle-center-label');
+            if (activeSandboxSymbols.length > 0) {
+                label.style.display = 'none';
+
+                // Draw central connecting web
+                ctx.beginPath();
+                const n = activeSandboxSymbols.length;
+                for (let i = 0; i < n; i++) {
+                    const angleI = (i * 2 * Math.PI) / n - Math.PI / 2;
+                    const xI = centerX + radius * Math.cos(angleI);
+                    const yI = centerY + radius * Math.sin(angleI);
+
+                    for (let j = i + 1; j < n; j++) {
+                        const angleJ = (j * 2 * Math.PI) / n - Math.PI / 2;
+                        const xJ = centerX + radius * Math.cos(angleJ);
+                        const yJ = centerY + radius * Math.sin(angleJ);
+
+                        ctx.moveTo(xI, yI);
+                        ctx.lineTo(xJ, yJ);
+                    }
+                }
+                ctx.strokeStyle = "rgba(245, 158, 11, 0.15)";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Draw Glyphs on circle perimeter
+                for (let i = 0; i < n; i++) {
+                    const angle = (i * 2 * Math.PI) / n - Math.PI / 2;
+                    const x = centerX + radius * Math.cos(angle);
+                    const y = centerY + radius * Math.sin(angle);
+
+                    // Node Circle
+                    ctx.beginPath();
+                    ctx.arc(x, y, 18, 0, Math.PI * 2);
+                    ctx.fillStyle = "#121115";
+                    ctx.fill();
+                    ctx.strokeStyle = "#d97706";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Render node glyph representation
+                    ctx.save();
+                    ctx.translate(x - 10, y - 10);
+                    ctx.scale(0.4, 0.4);
+                    const path = new Path2D(extractSvgPath(activeSandboxSymbols[i].svg));
+                    ctx.strokeStyle = "#f59e0b";
+                    ctx.lineWidth = 3;
+                    ctx.stroke(path);
+                    ctx.restore();
+                }
+
+            } else {
+                label.style.display = 'flex';
+            }
+        }
+
+        function extractSvgPath(svgString) {
+            const match = svgString.match(/d="([^"]+)"/);
+            return match ? match[1] : "M 10 10 L 40 40";
+        }
+
+        function setupSandboxControls() {
+            document.getElementById('clear-circle-btn').onclick = () => {
+                activeSandboxSymbols = [];
+                updateSandboxUI();
+            };
+
+            document.getElementById('synthesize-btn').onclick = () => {
+                if (activeSandboxSymbols.length === 0) {
+                    alert("Add symbols to the circle before resonating tone vectors.");
+                    return;
+                }
+                isAudioOn = true;
+                updateAudioButtonUI();
+
+                // Play synthesized chord drone based on active symbols
+                activeSandboxSymbols.forEach((sym, idx) => {
+                    setTimeout(() => {
+                        const baseFreq = 110 * (1 + (sym.id % 7) * 0.25);
+                        playTone(baseFreq, 'sawtooth', 1.2);
+                    }, idx * 200);
+                });
+            };
+
+            document.getElementById('check-secret-btn').onclick = checkCipherUnlock;
+        }
+
+        function checkCipherUnlock() {
+            const secretIds = [2, 12, 27, 24]; // Circle, Hand Stencil, Tectiform, Spiral
+            const activeIds = activeSandboxSymbols.map(s => s.id);
+
+            const isMatch = secretIds.every(id => activeIds.includes(id)) && activeIds.length === 4;
+            const keyLabel = document.getElementById('current-cipher-key');
+
+            if (isMatch) {
+                keyLabel.innerText = "CHAUVET-RESONANCE-UNLOCKED";
+                keyLabel.className = "text-emerald-400 font-bold animate-pulse";
+
+                // Inject secret unlocked log in ARG terminal
+                const logs = document.getElementById('terminal-logs');
+                if (!document.getElementById('unlocked-log-04')) {
+                    const newLog = document.createElement('div');
+                    newLog.id = 'unlocked-log-04';
+                    newLog.className = "p-3 bg-ochre-950/80 border-l-4 border-emerald-500 rounded text-xs font-mono space-y-1 animate-fadeIn";
+                    newLog.innerHTML = `
+                        <div class="flex justify-between text-emerald-400 font-bold">
+                            <span>LOG_04 [SECRET INTERCEPT]: "THE LIVING GAME ENGINE"</span>
+                            <span>CHAUVET DEEP NODE</span>
+                        </div>
+                        <p class="text-emerald-100 leading-relaxed">
+                            "You solved the glyph key! The 32 symbols are not ancient history; they are a pre-linguistic operating system. By combining Circle, Hand Stencil, Tectiform, and Spiral, you have recreated the exact cognitive sanctuary used 36,000 years ago to project shared human imagination into physical reality. Welcome to the Game."
+                        </p>
+                    `;
+                    logs.appendChild(newLog);
+                    logs.scrollTop = logs.scrollHeight;
+                }
+                playTone(440, 'sine', 0.8);
+            } else {
+                keyLabel.innerText = `ACTIVE (${activeIds.length}/4 KEY SYMBOLS)`;
+                keyLabel.className = "text-ochre-400 font-bold";
+            }
+        }
+
+        function setupAudioToggle() {
+            const btn = document.getElementById('audio-toggle-btn');
+            btn.onclick = () => {
+                isAudioOn = !isAudioOn;
+                updateAudioButtonUI();
+                if (isAudioOn) playTone(440, 'sine', 0.2);
+            };
+        }
+
+        function updateAudioButtonUI() {
+            const icon = document.getElementById('audio-icon');
+            const text = document.getElementById('audio-status-text');
+
+            if (isAudioOn) {
+                icon.className = "fa-solid fa-volume-high text-ochre-400";
+                text.innerText = "AUDIO ON";
+                text.className = "text-ochre-400 font-bold";
+            } else {
+                icon.className = "fa-solid fa-volume-xmark text-gray-400";
+                text.innerText = "AUDIO OFF";
+                text.className = "text-gray-300";
+            }
+        }
+    </script>
+</body>
+</html>
