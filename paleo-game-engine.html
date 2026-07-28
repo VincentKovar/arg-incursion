@@ -90,16 +90,26 @@
 
         @keyframes pulse-slow {
             0%, 100% { opacity: 0.2; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.03); }
+            50% { opacity: 0.5; transform: scale(1.04); }
         }
 
         .magic-pulse {
             animation: pulse-slow 4s infinite ease-in-out;
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
     </style>
 </head>
 <body class="cave-texture font-sans antialiased text-gray-200 selection:bg-ochre-600 selection:text-white flex flex-col min-h-screen">
 
+    <!-- HEADER -->
     <header class="border-b border-ochre-900/50 bg-cave/80 backdrop-blur sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center space-x-3">
@@ -117,6 +127,10 @@
 
             <!-- Header Controls & Audio Toggle -->
             <div class="flex items-center space-x-3">
+                <button id="ambient-toggle-btn" class="px-3 py-1.5 rounded-md bg-panel border border-gray-700 hover:border-ochre-500 text-xs font-mono flex items-center space-x-2 transition" title="Toggle subterranean cave atmosphere">
+                    <i class="fa-solid fa-wind text-gray-400" id="ambient-icon"></i>
+                    <span id="ambient-status-text" class="text-gray-300">CAVE AMBIENCE</span>
+                </button>
                 <button id="audio-toggle-btn" class="px-3 py-1.5 rounded-md bg-panel border border-gray-700 hover:border-ochre-500 text-xs font-mono flex items-center space-x-2 transition">
                     <i class="fa-solid fa-volume-xmark text-gray-400" id="audio-icon"></i>
                     <span id="audio-status-text" class="text-gray-300">AUDIO OFF</span>
@@ -129,6 +143,7 @@
         </div>
     </header>
 
+    <!-- NAVIGATION TAB BAR -->
     <nav class="bg-panel/60 border-b border-gray-800/80">
         <div class="max-w-7xl mx-auto px-4 flex overflow-x-auto space-x-2 py-2">
             <button data-tab="catalog" class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-ochre-600/20 text-ochre-400 border border-ochre-500/40">
@@ -153,13 +168,14 @@
     <!-- MAIN CONTENT CONTAINERS -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
 
+        <!-- TAB 1: CODEX CATALOG -->
         <section id="tab-catalog" class="tab-content block space-y-6">
             <!-- Filter & Search Section -->
             <div class="bg-panel border border-gray-800 rounded-xl p-4 shadow-lg flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
                 <!-- Search Box -->
                 <div class="relative flex-1">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-                    <input type="text" id="symbol-search" placeholder="Search by name, archetype (e.g. Agon, Magic Circle, Ilinx)..." class="w-full pl-9 pr-4 py-2 rounded-lg bg-cave border border-gray-700 text-sm text-gray-200 focus:outline-none focus:border-ochre-500 font-mono">
+                    <input type="text" id="symbol-search" placeholder="Search by symbol, archetype (e.g. Agon, Magic Circle, Ilinx)..." class="w-full pl-9 pr-4 py-2 rounded-lg bg-cave border border-gray-700 text-sm text-gray-200 focus:outline-none focus:border-ochre-500 font-mono">
                 </div>
 
                 <!-- Play Archetype Filter -->
@@ -185,11 +201,11 @@
 
             <!-- Symbol Cards Grid -->
             <div id="symbols-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                <!-- Javascript will dynamically populate cards here -->
+                <!-- Dynamic cards populated via JS -->
             </div>
         </section>
 
-
+        <!-- TAB 2: MAGIC CIRCLE SANDBOX -->
         <section id="tab-magic-circle" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <!-- Canvas Altar & Magic Circle Display -->
@@ -202,9 +218,9 @@
                         <p class="text-xs text-gray-400 max-w-md">According to Huizinga, play creates a bounded space set apart from mundane reality. Select up to 6 Paleolithic symbols to cast into the circle.</p>
                     </div>
 
-                    <!-- Canvas representation -->
+                    <!-- Interactive Canvas representation -->
                     <div class="relative w-72 h-72 sm:w-80 sm:h-80 my-2 flex items-center justify-center">
-                        <canvas id="circle-canvas" width="320" height="320" class="w-full h-full rounded-full border-2 border-ochre-700/40 bg-cave/80 shadow-2xl cursor-pointer"></canvas>
+                        <canvas id="circle-canvas" width="320" height="320" class="w-full h-full rounded-full border-2 border-ochre-700/40 bg-cave/80 shadow-2xl cursor-pointer" title="Click perimeter nodes to inspect active symbols"></canvas>
                         
                         <!-- Center Core Text -->
                         <div id="circle-center-label" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center p-4">
@@ -214,12 +230,15 @@
                     </div>
 
                     <!-- Controls -->
-                    <div class="flex items-center space-x-3 mt-4 z-10">
+                    <div class="flex flex-wrap items-center justify-center gap-3 mt-4 z-10">
                         <button id="clear-circle-btn" class="px-3 py-1.5 rounded bg-gray-800 hover:bg-red-950 text-red-300 text-xs font-mono border border-gray-700 transition">
                             <i class="fa-solid fa-trash-can mr-1"></i> Clear Circle
                         </button>
                         <button id="synthesize-btn" class="px-4 py-1.5 rounded bg-ochre-600 hover:bg-ochre-500 text-stone-950 font-bold text-xs font-mono shadow transition flex items-center space-x-1">
                             <i class="fa-solid fa-play mr-1"></i> Resonate Tone Vector
+                        </button>
+                        <button id="export-circle-btn" class="px-3 py-1.5 rounded bg-panel hover:bg-gray-800 text-ochre-300 text-xs font-mono border border-ochre-800 transition">
+                            <i class="fa-solid fa-download mr-1"></i> Export Canvas
                         </button>
                     </div>
                 </div>
@@ -290,14 +309,14 @@
                     <div>
                         <h4 class="text-xs font-mono text-gray-400 mb-2">QUICK GLYPH PICKER</h4>
                         <div id="sandbox-picker" class="grid grid-cols-8 gap-1.5 p-2 bg-cave rounded-lg border border-gray-800 max-h-36 overflow-y-auto">
-                            <!-- Populated dynamically -->
+                            <!-- Dynamic picker -->
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-
+        <!-- TAB 3: PLAY THEORY & MONOGRAPH -->
         <section id="tab-theory" class="tab-content hidden space-y-6">
             <div class="bg-panel border border-gray-800 rounded-xl p-6 md:p-8 space-y-6 max-w-4xl mx-auto leading-relaxed">
                 <div class="border-b border-ochre-900/60 pb-4">
@@ -308,7 +327,7 @@
 
                 <div class="prose prose-invert max-w-none text-sm text-gray-300 space-y-4">
                     <p>
-                        In 1938, Dutch historian Johan Huizinga published <em>Homo Ludens: A Study of the Play-Element in Culture</em>, advancing a revolutionary thesis: <strong>play pre-dates human culture</strong>. Animals do not wait for speech or ritual to play; play is an primal, irreducible function of biological consciousness. Culture, Huizinga argued, does not create play—culture arises <em>in and as play</em>.
+                        In 1938, Dutch historian Johan Huizinga published <em>Homo Ludens: A Study of the Play-Element in Culture</em>, advancing a revolutionary thesis: <strong>play pre-dates human culture</strong>. Animals do not wait for speech or ritual to play; play is a primal, irreducible function of biological consciousness. Culture, Huizinga argued, does not create play—culture arises <em>in and as play</em>.
                     </p>
                     
                     <blockquote class="p-4 rounded bg-cave border-l-4 border-ochre-600 font-mono text-xs text-ochre-200 my-4">
@@ -332,7 +351,7 @@
                         <li><strong class="text-amber-400">AGON (Competition & Skill):</strong> Represented by <em>Claviforms, Open Angles, Penniforms, and Scalariforms</em>. These shapes denote vector, strike, hierarchy, and turn-taking rules.</li>
                         <li><strong class="text-blue-400">ALEA (Chance & Fate):</strong> Represented by <em>Cupules (pebble pits) and Dots</em>. Used as early randomness generators—casting bones or seeds into carved depressions inside the cave.</li>
                         <li><strong class="text-purple-400">MIMICRY (Mask & Shamanic Simulation):</strong> Represented by <em>Aviforms, Finger Fluting, and Hand Stencils</em>. Marks that signify taking on the bird-spirit or altering identity inside the dark cave chamber.</li>
-                        <li><strong class="text-emerald-400">ILINX (Vertigo & Flow):</strong> Represented by <em>Spirals, Serpentines, and Zigzags</em>. Tranced-induced kinetic visual patterns carved on cave walls to induce sensory disorientation in flicker-lit caverns.</li>
+                        <li><strong class="text-emerald-400">ILINX (Vertigo & Flow):</strong> Represented by <em>Spirals, Serpentines, and Zigzags</em>. Trance-induced kinetic visual patterns carved on cave walls to induce sensory disorientation in flicker-lit caverns.</li>
                     </ul>
 
                     <h3 class="text-base font-bold text-ochre-400 font-mono pt-2">3. The ARG Hypothesis: The Paleolithic Holodeck</h3>
@@ -346,7 +365,7 @@
             </div>
         </section>
 
-
+        <!-- TAB 4: CIPHER & DECRYPTER -->
         <section id="tab-cipher" class="tab-content hidden space-y-6">
             <div class="bg-panel border border-gray-800 rounded-xl p-6 space-y-6">
                 <div class="flex items-center justify-between border-b border-gray-800 pb-3">
@@ -411,6 +430,7 @@
 
     </main>
 
+    <!-- DETAILED SYMBOL MODAL -->
     <div id="detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
         <div class="bg-panel border border-ochre-600/50 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative space-y-6">
             <!-- Close Button -->
@@ -434,7 +454,6 @@
 
             <!-- Modal Body Sections -->
             <div class="space-y-4 font-sans text-sm">
-                <!-- Archaeological Description -->
                 <div>
                     <h4 class="text-xs font-mono text-ochre-500 font-bold uppercase tracking-wider mb-1"><i class="fa-solid fa-archway mr-1"></i> Archeological Context</h4>
                     <p id="modal-archaeology" class="text-gray-300 text-xs leading-relaxed bg-cave p-3 rounded border border-gray-800">
@@ -442,7 +461,6 @@
                     </p>
                 </div>
 
-                <!-- Homo Ludens / Play Theory Connection -->
                 <div>
                     <h4 class="text-xs font-mono text-amber-500 font-bold uppercase tracking-wider mb-1"><i class="fa-solid fa-chess-knight mr-1"></i> Homo Ludens & Play Theory Hypothesis</h4>
                     <p id="modal-playtheory" class="text-ochre-100/90 text-xs leading-relaxed bg-ochre-950/40 p-3 rounded border border-ochre-900/60">
@@ -450,7 +468,6 @@
                     </p>
                 </div>
 
-                <!-- ARG Field Log -->
                 <div>
                     <h4 class="text-xs font-mono text-emerald-500 font-bold uppercase tracking-wider mb-1"><i class="fa-solid fa-terminal mr-1"></i> ARG Field Log Intercept</h4>
                     <p id="modal-arglog" class="text-emerald-200/80 font-mono text-xs leading-relaxed bg-cave p-3 rounded border border-gray-800">
@@ -468,7 +485,7 @@
         </div>
     </div>
 
-
+    <!-- FOOTER -->
     <footer class="border-t border-gray-900 bg-cave/90 py-4 mt-auto">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-gray-500 gap-2">
             <div>CODEX LUDENS // Based on research by Genevieve von Petzinger & Johan Huizinga</div>
@@ -483,11 +500,13 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
+        // FULL STANDARDIZED 32 PALEO SYMBOLS DATA (CONVERTED TO UNIFIED PATH DATA FOR CANVAS COMPATIBILITY)
         const SYMBOLS_DATA = [
             {
                 id: 1,
                 name: "Aviform",
                 svg: `<path d="M5 25 Q 15 10, 25 25 Q 35 10, 45 25" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Mimicry (Role/Shamanism)",
                 caillois: { agon: 20, alea: 10, mimicry: 80, ilinx: 40 },
                 period: "Aurignacian to Magdalenian",
@@ -499,7 +518,8 @@
             {
                 id: 2,
                 name: "Circle",
-                svg: `<circle cx="25" cy="25" r="16" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                svg: `<path d="M 9 25 a 16 16 0 1 0 32 0 a 16 16 0 1 0 -32 0" fill="none" stroke="#f59e0b" stroke-width="3"/>`,
+                isFill: false,
                 archetype: "Boundary / Magic Circle",
                 caillois: { agon: 10, alea: 30, mimicry: 50, ilinx: 20 },
                 period: "Aurignacian to Magdalenian",
@@ -512,6 +532,7 @@
                 id: 3,
                 name: "Claviform",
                 svg: `<path d="M25 8 V 42 M25 16 Q 38 16, 25 26" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 85, alea: 15, mimicry: 10, ilinx: 10 },
                 period: "Gravettian to Magdalenian",
@@ -524,6 +545,7 @@
                 id: 4,
                 name: "Cordiform",
                 svg: `<path d="M25 38 C 10 25, 10 12, 25 18 C 40 12, 40 25, 25 38 Z" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                isFill: false,
                 archetype: "Lusory Action",
                 caillois: { agon: 30, alea: 20, mimicry: 60, ilinx: 30 },
                 period: "Solutrean to Magdalenian",
@@ -536,6 +558,7 @@
                 id: 5,
                 name: "Crosshatch",
                 svg: `<path d="M12 12 L 38 38 M 38 12 L 12 38 M 12 25 H 38 M 25 12 V 38" stroke="#f59e0b" stroke-width="2.5" fill="none"/>`,
+                isFill: false,
                 archetype: "Boundary / Magic Circle",
                 caillois: { agon: 70, alea: 40, mimicry: 20, ilinx: 10 },
                 period: "Pre-Aurignacian (Blombos) to Magdalenian",
@@ -548,6 +571,7 @@
                 id: 6,
                 name: "Cruciform",
                 svg: `<path d="M25 8 V 42 M 8 25 H 42" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 60, alea: 30, mimicry: 20, ilinx: 10 },
                 period: "Aurignacian to Magdalenian",
@@ -559,7 +583,8 @@
             {
                 id: 7,
                 name: "Cupule",
-                svg: `<circle cx="15" cy="18" r="4" fill="#f59e0b"/><circle cx="32" cy="16" r="5" fill="#f59e0b"/><circle cx="22" cy="32" r="4.5" fill="#f59e0b"/>`,
+                svg: `<path d="M 11 18 a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0 M 27 16 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0 M 17.5 32 a 4.5 4.5 0 1 0 9 0 a 4.5 4.5 0 1 0 -9 0" fill="#f59e0b"/>`,
+                isFill: true,
                 archetype: "Alea (Chance/Pits)",
                 caillois: { agon: 20, alea: 90, mimicry: 10, ilinx: 20 },
                 period: "Pre-Aurignacian to Magdalenian",
@@ -571,7 +596,8 @@
             {
                 id: 8,
                 name: "Dot",
-                svg: `<circle cx="25" cy="25" r="7" fill="#f59e0b"/>`,
+                svg: `<path d="M 18 25 a 7 7 0 1 0 14 0 a 7 7 0 1 0 -14 0" fill="#f59e0b"/>`,
+                isFill: true,
                 archetype: "Lusory Action",
                 caillois: { agon: 40, alea: 70, mimicry: 10, ilinx: 10 },
                 period: "Aurignacian to Magdalenian",
@@ -584,6 +610,7 @@
                 id: 9,
                 name: "Finger Fluting",
                 svg: `<path d="M12 10 Q 18 25, 12 40 M 22 10 Q 28 25, 22 40 M 32 10 Q 38 25, 32 40" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Ilinx (Vertigo/Flow)",
                 caillois: { agon: 10, alea: 10, mimicry: 40, ilinx: 85 },
                 period: "Aurignacian to Gravettian",
@@ -596,6 +623,7 @@
                 id: 10,
                 name: "Flabelliform",
                 svg: `<path d="M25 40 L 10 12 M 25 40 L 18 10 M 25 40 L 25 8 M 25 40 L 32 10 M 25 40 L 40 12" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Mimicry (Role/Shamanism)",
                 caillois: { agon: 30, alea: 10, mimicry: 75, ilinx: 30 },
                 period: "Solutrean to Magdalenian",
@@ -608,6 +636,7 @@
                 id: 11,
                 name: "Half-Circle",
                 svg: `<path d="M10 30 A 15 15 0 0 1 40 30 Z" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                isFill: false,
                 archetype: "Boundary / Magic Circle",
                 caillois: { agon: 30, alea: 40, mimicry: 30, ilinx: 20 },
                 period: "Aurignacian to Magdalenian",
@@ -619,7 +648,8 @@
             {
                 id: 12,
                 name: "Hand Stencil",
-                svg: `<path d="M15 38 V 22 M 20 38 V 14 M 26 38 V 10 M 32 38 V 16 M 37 38 V 24" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/><circle cx="25" cy="25" r="20" stroke="#f59e0b" stroke-dasharray="2 3" fill="none"/>`,
+                svg: `<path d="M15 38 V 22 M 20 38 V 14 M 26 38 V 10 M 32 38 V 16 M 37 38 V 24 M 5 25 a 20 20 0 1 0 40 0 a 20 20 0 1 0 -40 0" stroke="#f59e0b" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Lusory Action",
                 caillois: { agon: 40, alea: 20, mimicry: 80, ilinx: 30 },
                 period: "Aurignacian to Gravettian",
@@ -632,6 +662,7 @@
                 id: 13,
                 name: "Lines",
                 svg: `<path d="M12 10 V 40 M 20 10 V 40 M 28 10 V 40 M 36 10 V 40" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 70, alea: 30, mimicry: 10, ilinx: 10 },
                 period: "Aurignacian to Magdalenian",
@@ -644,6 +675,7 @@
                 id: 14,
                 name: "Open Angle",
                 svg: `<path d="M10 18 L 25 32 L 40 18" stroke="#f59e0b" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 80, alea: 20, mimicry: 10, ilinx: 20 },
                 period: "Aurignacian to Magdalenian",
@@ -655,7 +687,8 @@
             {
                 id: 15,
                 name: "Oval",
-                svg: `<ellipse cx="25" cy="25" rx="18" ry="12" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                svg: `<path d="M 7 25 a 18 12 0 1 0 36 0 a 18 12 0 1 0 -36 0" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                isFill: false,
                 archetype: "Boundary / Magic Circle",
                 caillois: { agon: 20, alea: 40, mimicry: 40, ilinx: 20 },
                 period: "Aurignacian to Magdalenian",
@@ -668,6 +701,7 @@
                 id: 16,
                 name: "Pectiform",
                 svg: `<path d="M8 18 H 42 M 12 18 V 34 M 20 18 V 34 M 28 18 V 34 M 36 18 V 34" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 85, alea: 30, mimicry: 10, ilinx: 10 },
                 period: "Solutrean to Magdalenian",
@@ -680,6 +714,7 @@
                 id: 17,
                 name: "Penniform",
                 svg: `<path d="M25 8 V 42 M 25 18 L 12 12 M 25 26 L 12 20 M 25 18 L 38 12 M 25 26 L 38 20" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 75, alea: 20, mimicry: 30, ilinx: 20 },
                 period: "Solutrean to Magdalenian",
@@ -692,6 +727,7 @@
                 id: 18,
                 name: "Positive Hand",
                 svg: `<path d="M15 36 V 22 M 20 36 V 14 M 26 36 V 10 M 32 36 V 16 M 37 36 V 24 M 15 36 H 37 V 38 H 15 Z" fill="#f59e0b"/>`,
+                isFill: true,
                 archetype: "Lusory Action",
                 caillois: { agon: 50, alea: 10, mimicry: 60, ilinx: 20 },
                 period: "Aurignacian to Magdalenian",
@@ -703,7 +739,8 @@
             {
                 id: 19,
                 name: "Quadrangle",
-                svg: `<rect x="10" y="10" width="30" height="30" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                svg: `<path d="M 10 10 H 40 V 40 H 10 Z" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                isFill: false,
                 archetype: "Boundary / Magic Circle",
                 caillois: { agon: 80, alea: 20, mimicry: 10, ilinx: 10 },
                 period: "Aurignacian to Magdalenian",
@@ -716,6 +753,7 @@
                 id: 20,
                 name: "Reniform",
                 svg: `<path d="M20 10 C 5 15, 5 35, 20 40 C 35 40, 25 25, 20 10 Z" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                isFill: false,
                 archetype: "Mimicry (Role/Shamanism)",
                 caillois: { agon: 20, alea: 30, mimicry: 70, ilinx: 30 },
                 period: "Solutrean to Magdalenian",
@@ -728,6 +766,7 @@
                 id: 21,
                 name: "Scalariform",
                 svg: `<path d="M16 8 V 42 M 34 8 V 42 M 16 15 H 34 M 16 25 H 34 M 16 35 H 34" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 90, alea: 10, mimicry: 20, ilinx: 30 },
                 period: "Gravettian to Magdalenian",
@@ -740,6 +779,7 @@
                 id: 22,
                 name: "Segmented Line",
                 svg: `<path d="M8 25 H 14 M 20 25 H 26 M 32 25 H 38 M 44 25 H 50" stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 60, alea: 40, mimicry: 10, ilinx: 10 },
                 period: "Aurignacian to Magdalenian",
@@ -752,6 +792,7 @@
                 id: 23,
                 name: "Serpentine",
                 svg: `<path d="M8 25 Q 18 10, 25 25 T 42 25" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Ilinx (Vertigo/Flow)",
                 caillois: { agon: 20, alea: 30, mimicry: 40, ilinx: 80 },
                 period: "Aurignacian to Magdalenian",
@@ -764,6 +805,7 @@
                 id: 24,
                 name: "Spiral",
                 svg: `<path d="M25 25 m 0 0 a 3 3 0 0 1 3 3 a 6 6 0 0 1 -6 6 a 10 10 0 0 1 -10 -10 a 15 15 0 0 1 15 -15" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Ilinx (Vertigo/Flow)",
                 caillois: { agon: 10, alea: 20, mimicry: 50, ilinx: 95 },
                 period: "Solutrean to Magdalenian",
@@ -776,6 +818,7 @@
                 id: 25,
                 name: "Spliform",
                 svg: `<path d="M12 12 L 38 38 M 38 12 L 12 38 M 12 25 L 25 12 L 38 25 L 25 38 Z" stroke="#f59e0b" stroke-width="2.5" fill="none"/>`,
+                isFill: false,
                 archetype: "Boundary / Magic Circle",
                 caillois: { agon: 50, alea: 50, mimicry: 20, ilinx: 20 },
                 period: "Solutrean to Magdalenian",
@@ -788,6 +831,7 @@
                 id: 26,
                 name: "Symmetric Trefoil",
                 svg: `<path d="M25 12 A 7 7 0 0 1 32 22 A 7 7 0 0 1 25 32 A 7 7 0 0 1 18 22 A 7 7 0 0 1 25 12 Z M 16 30 A 7 7 0 0 1 25 32 M 34 30 A 7 7 0 0 1 25 32" stroke="#f59e0b" stroke-width="2.5" fill="none"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 70, alea: 40, mimicry: 30, ilinx: 10 },
                 period: "Magdalenian",
@@ -800,6 +844,7 @@
                 id: 27,
                 name: "Tectiform",
                 svg: `<path d="M10 24 L 25 10 L 40 24 M 18 24 V 40 M 32 24 V 40 M 10 24 H 40" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Boundary / Magic Circle",
                 caillois: { agon: 60, alea: 20, mimicry: 50, ilinx: 10 },
                 period: "Solutrean to Magdalenian",
@@ -811,7 +856,8 @@
             {
                 id: 28,
                 name: "Triangle",
-                svg: `<polygon points="25,10 10,38 40,38" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                svg: `<path d="M 25 10 L 10 38 L 40 38 Z" stroke="#f59e0b" stroke-width="3" fill="none"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 75, alea: 20, mimicry: 30, ilinx: 10 },
                 period: "Aurignacian to Magdalenian",
@@ -823,7 +869,8 @@
             {
                 id: 29,
                 name: "Uniform",
-                svg: `<line x1="25" y1="10" x2="25" y2="40" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>`,
+                svg: `<path d="M 25 10 L 25 40" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 50, alea: 30, mimicry: 10, ilinx: 10 },
                 period: "Aurignacian to Magdalenian",
@@ -836,6 +883,7 @@
                 id: 30,
                 name: "W-sign",
                 svg: `<path d="M8 15 L 18 35 L 25 22 L 32 35 L 42 15" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Agon (Competition/Rules)",
                 caillois: { agon: 65, alea: 30, mimicry: 20, ilinx: 30 },
                 period: "Solutrean to Magdalenian",
@@ -848,6 +896,7 @@
                 id: 31,
                 name: "Y-sign",
                 svg: `<path d="M12 12 L 25 25 M 38 12 L 25 25 M 25 25 V 40" stroke="#f59e0b" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Lusory Action",
                 caillois: { agon: 60, alea: 50, mimicry: 20, ilinx: 20 },
                 period: "Aurignacian to Magdalenian",
@@ -860,6 +909,7 @@
                 id: 32,
                 name: "Zigzag",
                 svg: `<path d="M8 12 L 22 20 L 10 28 L 38 36" stroke="#f59e0b" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+                isFill: false,
                 archetype: "Ilinx (Vertigo/Flow)",
                 caillois: { agon: 40, alea: 40, mimicry: 20, ilinx: 90 },
                 period: "Aurignacian to Magdalenian",
@@ -871,10 +921,14 @@
         ];
 
         let activeSandboxSymbols = [];
+        let canvasNodePositions = [];
         let audioCtx = null;
         let isAudioOn = false;
+        let isAmbienceOn = false;
+        let ambientNoiseNode = null;
+        let ambientGainNode = null;
 
-        // Initialize Web Audio API on demand
+        // Web Audio API initialization
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -884,7 +938,50 @@
             }
         }
 
-        // Play synth tone when selecting symbols or resonating circle
+        // Subterranean Cave Wind/Ambience Synthesizer
+        function toggleAmbience() {
+            initAudio();
+            if (isAmbienceOn) {
+                if (ambientGainNode) {
+                    ambientGainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1);
+                    setTimeout(() => {
+                        if (ambientNoiseNode) ambientNoiseNode.stop();
+                        ambientNoiseNode = null;
+                    }, 1000);
+                }
+                isAmbienceOn = false;
+            } else {
+                // Procedural white noise buffer for wind sound
+                const bufferSize = 2 * audioCtx.sampleRate;
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                ambientNoiseNode = audioCtx.createBufferSource();
+                ambientNoiseNode.buffer = noiseBuffer;
+                ambientNoiseNode.loop = true;
+
+                // Deep lowpass filter to emulate subterranean echo
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(180, audioCtx.currentTime);
+
+                ambientGainNode = audioCtx.createGain();
+                ambientGainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
+                ambientGainNode.gain.exponentialRampToValueAtTime(0.05, audioCtx.currentTime + 2);
+
+                ambientNoiseNode.connect(filter);
+                filter.connect(ambientGainNode);
+                ambientGainNode.connect(audioCtx.destination);
+
+                ambientNoiseNode.start();
+                isAmbienceOn = true;
+            }
+            updateAmbienceButtonUI();
+        }
+
         function playTone(freq = 220, type = 'sine', duration = 0.4) {
             if (!isAudioOn) return;
             initAudio();
@@ -894,7 +991,7 @@
                 osc.type = type;
                 osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
                 
-                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
                 
                 osc.connect(gain);
@@ -903,7 +1000,7 @@
                 osc.start();
                 osc.stop(audioCtx.currentTime + duration);
             } catch (e) {
-                console.error("Audio error:", e);
+                console.error("Audio synth error:", e);
             }
         }
 
@@ -915,6 +1012,7 @@
             setupModalHandlers();
             setupAudioToggle();
             setupSandboxControls();
+            setupCanvasInteractivity();
             drawMagicCircleCanvas();
         });
 
@@ -1038,7 +1136,6 @@
                 if (currentModalSymbol) {
                     addToSandbox(currentModalSymbol.id);
                     modal.classList.add('opacity-0', 'pointer-events-none');
-                    // Switch to sandbox tab
                     document.querySelector('[data-tab="magic-circle"]').click();
                 }
             };
@@ -1088,7 +1185,7 @@
                 container.innerHTML = '';
                 activeSandboxSymbols.forEach((sym, idx) => {
                     const tag = document.createElement('div');
-                    tag.className = "flex items-center space-x-1.5 bg-ochre-950/80 border border-ochre-700/60 rounded px-2 py-1 text-xs font-mono text-ochre-300";
+                    tag.className = "flex items-center space-x-1.5 bg-ochre-950/80 border border-ochre-700/60 rounded px-2 py-1 text-xs font-mono text-ochre-300 animate-fadeIn";
                     tag.innerHTML = `
                         <svg viewBox="0 0 50 50" class="w-4 h-4">${sym.svg}</svg>
                         <span>${sym.name}</span>
@@ -1143,7 +1240,6 @@
             document.getElementById('bar-mimicry').style.width = `${pMimicry}%`;
             document.getElementById('bar-ilinx').style.width = `${pIlinx}%`;
 
-            // Derive dynamic Ludic Game State Lore
             let dominant = "Balanced Ludic Matrix";
             if (pAgon >= 40) dominant = "Agonal Arena (Competitive Rule-Bound Tournament)";
             else if (pAlea >= 40) dominant = "Aleatory Sanctuary (Divination & Fate-based Play)";
@@ -1156,6 +1252,7 @@
             `;
         }
 
+        // Draw 2D Canvas with updated SVG Path Renderer
         function drawMagicCircleCanvas() {
             const canvas = document.getElementById('circle-canvas');
             if (!canvas) return;
@@ -1166,9 +1263,10 @@
             const centerY = height / 2;
             const radius = 110;
 
+            canvasNodePositions = [];
             ctx.clearRect(0, 0, width, height);
 
-            // Draw outer magical boundary rings
+            // Outer ring boundaries
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius + 15, 0, Math.PI * 2);
             ctx.strokeStyle = "rgba(217, 119, 6, 0.2)";
@@ -1183,12 +1281,11 @@
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Center icon or prompt
             const label = document.getElementById('circle-center-label');
             if (activeSandboxSymbols.length > 0) {
                 label.style.display = 'none';
 
-                // Draw central connecting web
+                // Interconnecting Geometric Resonant Web
                 ctx.beginPath();
                 const n = activeSandboxSymbols.length;
                 for (let i = 0; i < n; i++) {
@@ -1205,17 +1302,19 @@
                         ctx.lineTo(xJ, yJ);
                     }
                 }
-                ctx.strokeStyle = "rgba(245, 158, 11, 0.15)";
-                ctx.lineWidth = 1;
+                ctx.strokeStyle = "rgba(245, 158, 11, 0.25)";
+                ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                // Draw Glyphs on circle perimeter
+                // Draw perimeter nodes and symbols
                 for (let i = 0; i < n; i++) {
                     const angle = (i * 2 * Math.PI) / n - Math.PI / 2;
                     const x = centerX + radius * Math.cos(angle);
                     const y = centerY + radius * Math.sin(angle);
 
-                    // Node Circle
+                    canvasNodePositions.push({ x, y, radius: 18, index: i, sym: activeSandboxSymbols[i] });
+
+                    // Node Circle Base
                     ctx.beginPath();
                     ctx.arc(x, y, 18, 0, Math.PI * 2);
                     ctx.fillStyle = "#121115";
@@ -1224,14 +1323,22 @@
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // Render node glyph representation
+                    // Render node symbol using pure Path2D
                     ctx.save();
                     ctx.translate(x - 10, y - 10);
                     ctx.scale(0.4, 0.4);
-                    const path = new Path2D(extractSvgPath(activeSandboxSymbols[i].svg));
-                    ctx.strokeStyle = "#f59e0b";
-                    ctx.lineWidth = 3;
-                    ctx.stroke(path);
+                    
+                    const rawPathString = extractSvgPathData(activeSandboxSymbols[i].svg);
+                    const path = new Path2D(rawPathString);
+
+                    if (activeSandboxSymbols[i].isFill) {
+                        ctx.fillStyle = "#f59e0b";
+                        ctx.fill(path);
+                    } else {
+                        ctx.strokeStyle = "#f59e0b";
+                        ctx.lineWidth = 3;
+                        ctx.stroke(path);
+                    }
                     ctx.restore();
                 }
 
@@ -1240,9 +1347,29 @@
             }
         }
 
-        function extractSvgPath(svgString) {
-            const match = svgString.match(/d="([^"]+)"/);
-            return match ? match[1] : "M 10 10 L 40 40";
+        // Extracts all 'd="..."' attributes from SVG strings
+        function extractSvgPathData(svgString) {
+            const matches = svgString.match(/d="([^"]+)"/g);
+            if (!matches) return "M 10 10 L 40 40";
+            return matches.map(m => m.replace(/d="|"/g, '')).join(' ');
+        }
+
+        function setupCanvasInteractivity() {
+            const canvas = document.getElementById('circle-canvas');
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const clickX = (e.clientX - rect.left) * scaleX;
+                const clickY = (e.clientY - rect.top) * scaleY;
+
+                canvasNodePositions.forEach(node => {
+                    const dist = Math.hypot(clickX - node.x, clickY - node.y);
+                    if (dist <= node.radius) {
+                        openModal(node.sym.id);
+                    }
+                });
+            });
         }
 
         function setupSandboxControls() {
@@ -1259,13 +1386,21 @@
                 isAudioOn = true;
                 updateAudioButtonUI();
 
-                // Play synthesized chord drone based on active symbols
                 activeSandboxSymbols.forEach((sym, idx) => {
                     setTimeout(() => {
                         const baseFreq = 110 * (1 + (sym.id % 7) * 0.25);
                         playTone(baseFreq, 'sawtooth', 1.2);
                     }, idx * 200);
                 });
+            };
+
+            document.getElementById('export-circle-btn').onclick = () => {
+                const canvas = document.getElementById('circle-canvas');
+                const image = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.download = `magic-circle-codex-${Date.now()}.png`;
+                link.href = image;
+                link.click();
             };
 
             document.getElementById('check-secret-btn').onclick = checkCipherUnlock;
@@ -1282,7 +1417,6 @@
                 keyLabel.innerText = "CHAUVET-RESONANCE-UNLOCKED";
                 keyLabel.className = "text-emerald-400 font-bold animate-pulse";
 
-                // Inject secret unlocked log in ARG terminal
                 const logs = document.getElementById('terminal-logs');
                 if (!document.getElementById('unlocked-log-04')) {
                     const newLog = document.createElement('div');
@@ -1308,12 +1442,15 @@
         }
 
         function setupAudioToggle() {
-            const btn = document.getElementById('audio-toggle-btn');
-            btn.onclick = () => {
+            const audioBtn = document.getElementById('audio-toggle-btn');
+            audioBtn.onclick = () => {
                 isAudioOn = !isAudioOn;
                 updateAudioButtonUI();
                 if (isAudioOn) playTone(440, 'sine', 0.2);
             };
+
+            const ambientBtn = document.getElementById('ambient-toggle-btn');
+            ambientBtn.onclick = toggleAmbience;
         }
 
         function updateAudioButtonUI() {
@@ -1327,6 +1464,21 @@
             } else {
                 icon.className = "fa-solid fa-volume-xmark text-gray-400";
                 text.innerText = "AUDIO OFF";
+                text.className = "text-gray-300";
+            }
+        }
+
+        function updateAmbienceButtonUI() {
+            const icon = document.getElementById('ambient-icon');
+            const text = document.getElementById('ambient-status-text');
+
+            if (isAmbienceOn) {
+                icon.className = "fa-solid fa-wind text-emerald-400 animate-pulse";
+                text.innerText = "CAVE SOUND ON";
+                text.className = "text-emerald-400 font-bold";
+            } else {
+                icon.className = "fa-solid fa-wind text-gray-400";
+                text.innerText = "CAVE AMBIENCE";
                 text.className = "text-gray-300";
             }
         }
