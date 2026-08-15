@@ -1,0 +1,309 @@
+<!-- 
+  =============================================================================
+  CRICKET AUDIO STEGANOGRAPHY TOOL
+  
+  Purpose:
+  1. ENCODE: Speed up spoken voice recordings by 15x to scale vocal formants 
+     into the ~4.5 kHz range, making them sound like Jin Ling Zi / bell crickets.
+  2. DECODE: Slow down high-pitched cricket audio clips to 0.067x speed (1/15th) 
+     to reveal hidden voice messages.
+  3. EXPORT: Save rendered audio files as WAV for use in scavenger hunts.
+  =============================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cricket Audio Steganography Tester</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #121212;
+      color: #e0e0e0;
+    }
+    .card {
+      background: #1e1e1e;
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid #333;
+    }
+    .section { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 8px; font-weight: 600; color: #aaa; }
+    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #2563eb;
+      color: #fff;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+    button.rec { background: #dc2626; }
+    button.rec.recording { animation: pulse 1s infinite; }
+    .preset-btn { background: #059669; }
+    .preset-btn:hover { background: #047857; }
+    .export-btn { background: #8b5cf6; }
+    .export-btn:hover { background: #7c3aed; }
+    .control-row { display: flex; align-items: center; gap: 12px; }
+    input[type="range"] { flex: 1; }
+    .value-display { font-family: monospace; min-width: 60px; }
+    .status { font-size: 0.9em; color: #10b981; min-height: 1.2em; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>🦗 Cricket Stego Audio Converter</h2>
+    
+    <!-- Input Section -->
+    <div class="section">
+      <label>1. Provide Audio Source</label>
+      <div class="btn-group">
+        <button id="recordBtn" class="rec">🎤 Record Voice</button>
+        <input type="file" id="fileInput" accept="audio/*" style="display:none">
+        <button id="uploadBtn">📁 Upload Audio File</button>
+      </div>
+      <div id="status" class="status">Ready. Upload or record audio.</div>
+    </div>
+
+    <!-- Playback Presets -->
+    <div class="section">
+      <label>2. Speed Presets</label>
+      <div class="btn-group">
+        <button id="btnNormal" class="preset-btn" disabled>Normal (1.0x)</button>
+        <button id="btnCricket" class="preset-btn" disabled>Cricket (15.0x)</button>
+        <button id="btnDecode" class="preset-btn" disabled>Decode Voice (0.067x)</button>
+        <button id="btnStop" disabled style="background:#4b5563">⏹ Stop</button>
+      </div>
+    </div>
+
+    <!-- Fine Tuning Control -->
+    <div class="section">
+      <label>3. Fine-Tune Playback Rate</label>
+      <div class="control-row">
+        <input type="range" id="rateSlider" min="0.03" max="20" step="0.01" value="1" disabled>
+        <span id="rateValue" class="value-display">1.00x</span>
+      </div>
+    </div>
+
+    <!-- Export Section -->
+    <div class="section">
+      <label>4. Export Audio File</label>
+      <div class="btn-group">
+        <button id="exportBtn" class="export-btn" disabled>💾 Export Current Rate to WAV</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let audioCtx = null;
+    let audioBuffer = null;
+    let activeSource = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let currentRate = 1.0;
+
+    const recordBtn = document.getElementById('recordBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('fileInput');
+    const statusEl = document.getElementById('status');
+    const rateSlider = document.getElementById('rateSlider');
+    const rateValue = document.getElementById('rateValue');
+    const exportBtn = document.getElementById('exportBtn');
+    const actionBtns = [
+      document.getElementById('btnNormal'),
+      document.getElementById('btnCricket'),
+      document.getElementById('btnDecode'),
+      document.getElementById('btnStop'),
+      rateSlider,
+      exportBtn
+    ];
+
+    function initAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function setButtonsEnabled(enabled) {
+      actionBtns.forEach(btn => btn.disabled = !enabled);
+    }
+
+    // Handle Upload
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      initAudioContext();
+      statusEl.textContent = 'Loading audio...';
+      const arrayBuffer = await file.arrayBuffer();
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      statusEl.textContent = `Loaded: ${file.name} (${audioBuffer.duration.toFixed(1)}s)`;
+      setButtonsEnabled(true);
+    });
+
+    // Handle Recording
+    recordBtn.addEventListener('click', async () => {
+      initAudioContext();
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        recordBtn.classList.remove('recording');
+        recordBtn.textContent = '🎤 Record Voice';
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        recordedChunks = [];
+        
+        mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+          const arrayBuffer = await blob.arrayBuffer();
+          audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+          statusEl.textContent = `Recorded: ${audioBuffer.duration.toFixed(1)}s of audio`;
+          setButtonsEnabled(true);
+        };
+
+        mediaRecorder.start();
+        recordBtn.classList.add('recording');
+        recordBtn.textContent = '🛑 Stop Recording';
+        statusEl.textContent = 'Recording... speak a secret phrase!';
+      } catch (err) {
+        statusEl.textContent = 'Microphone access denied or unsupported.';
+      }
+    });
+
+    // Playback Engine
+    function playAtRate(rate) {
+      if (!audioBuffer) return;
+      stopPlayback();
+
+      currentRate = rate;
+      activeSource = audioCtx.createBufferSource();
+      activeSource.buffer = audioBuffer;
+      activeSource.playbackRate.value = rate;
+      activeSource.connect(audioCtx.destination);
+      activeSource.start(0);
+
+      rateSlider.value = rate;
+      rateValue.textContent = rate.toFixed(2) + 'x';
+      statusEl.textContent = `Playing at ${rate.toFixed(2)}x rate...`;
+
+      activeSource.onended = () => {
+        statusEl.textContent = 'Playback finished.';
+      };
+    }
+
+    function stopPlayback() {
+      if (activeSource) {
+        activeSource.stop();
+        activeSource.disconnect();
+        activeSource = null;
+      }
+    }
+
+    // Event Listeners for Controls
+    document.getElementById('btnNormal').addEventListener('click', () => playAtRate(1.0));
+    document.getElementById('btnCricket').addEventListener('click', () => playAtRate(15.0));
+    document.getElementById('btnDecode').addEventListener('click', () => playAtRate(0.067));
+    document.getElementById('btnStop').addEventListener('click', () => {
+      stopPlayback();
+      statusEl.textContent = 'Stopped.';
+    });
+
+    rateSlider.addEventListener('input', (e) => {
+      currentRate = parseFloat(e.target.value);
+      rateValue.textContent = currentRate.toFixed(2) + 'x';
+      if (activeSource) {
+        activeSource.playbackRate.value = currentRate;
+      }
+    });
+
+    // WAV Encoder
+    function bufferToWav(abuffer) {
+      const numOfChan = abuffer.numberOfChannels;
+      const length = abuffer.length * numOfChan * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
+      const channels = [];
+      let sample = 0;
+      let offset = 0;
+      let pos = 0;
+
+      function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+      function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+
+      setUint32(0x46464952); // "RIFF"
+      setUint32(length - 8);
+      setUint32(0x45564157); // "WAVE"
+      setUint32(0x20746d66); // "fmt "
+      setUint32(16);          // length = 16
+      setUint16(1);           // PCM
+      setUint16(numOfChan);
+      setUint32(abuffer.sampleRate);
+      setUint32(abuffer.sampleRate * 2 * numOfChan);
+      setUint16(numOfChan * 2);
+      setUint16(16);          // 16-bit
+      setUint32(0x61746164); // "data"
+      setUint32(length - pos - 4);
+
+      for (let i = 0; i < numOfChan; i++) {
+        channels.push(abuffer.getChannelData(i));
+      }
+
+      while (pos < length) {
+        for (let i = 0; i < numOfChan; i++) {
+          sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+          view.setInt16(pos, sample, true);
+          pos += 2;
+        }
+        offset++;
+      }
+
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    // Offline Render & Download
+    exportBtn.addEventListener('click', async () => {
+      if (!audioBuffer) return;
+      statusEl.textContent = 'Rendering audio for export...';
+
+      const renderLength = Math.max(1, Math.ceil(audioBuffer.length / currentRate));
+      const offlineCtx = new OfflineAudioContext(
+        audioBuffer.numberOfChannels,
+        renderLength,
+        audioBuffer.sampleRate
+      );
+
+      const source = offlineCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.playbackRate.value = currentRate;
+      source.connect(offlineCtx.destination);
+      source.start(0);
+
+      const renderedBuffer = await offlineCtx.startRendering();
+      const wavBlob = bufferToWav(renderedBuffer);
+
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentRate >= 1.0 ? 'cricket_encoded.wav' : 'cricket_decoded.wav';
+      a.click();
+      URL.revokeObjectURL(url);
+
+      statusEl.textContent = `Exported WAV file (${currentRate.toFixed(2)}x speed).`;
+    });
+  </script>
+</body>
+</html>
