@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lotería Clásica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --loteria-bg: #f4e4bc;
+            --loteria-border: #2c3e50;
+            --loteria-pink: #e91e63;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            overscroll-behavior-y: contain;
+        }
+
+        #game-container {
+            height: 200vh; /* Two full viewports: Poem top, Grid bottom */
+            scroll-behavior: smooth;
+        }
+
+        .section {
+            height: 100vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #poem-section {
+            background-color: var(--loteria-bg);
+            background-image: radial-gradient(#dcc99e 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #333;
+            text-align: center;
+            padding: 2rem;
+            border-bottom: 8px solid var(--loteria-border);
+        }
+
+        .poem-text {
+            font-family: 'Special Elite', cursive;
+            font-size: 1.8rem;
+            line-height: 1.4;
+            max-width: 80%;
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
+        }
+
+        #grid-section {
+            background-color: #2c3e50;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 15px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .loteria-card {
+            aspect-ratio: 2/3;
+            background: white;
+            border-radius: 8px;
+            border: 4px solid #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 5px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.3s;
+            overflow: hidden;
+        }
+
+        .loteria-card.selected {
+            background-color: #ffe082;
+            transform: scale(0.95);
+            border-color: var(--loteria-pink);
+        }
+
+        .loteria-card i {
+            font-size: 2.5rem;
+            color: #d32f2f;
+        }
+
+        .card-number {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #777;
+        }
+
+        .card-name {
+            font-family: 'Special Elite', cursive;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .ripple {
+            position: absolute;
+            border: 4px solid var(--loteria-pink);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple-effect 0.8s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes ripple-effect {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Message Box */
+        #message-overlay {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            z-index: 100;
+            display: none;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        .feedback-correct { color: #4caf50; }
+        .feedback-wrong { color: #f44336; }
+
+    </style>
+</head>
+<body>
+
+    <div id="message-overlay"></div>
+
+    <div id="game-container">
+        <section id="poem-section" class="section">
+            <div class="mb-4 text-xs font-bold uppercase tracking-widest text-pink-600 opacity-60">La Cantada</div>
+            <p id="current-poem" class="poem-text">
+                "El que a buen árbol se arrima, buena sombra lo cobija..."
+            </p>
+            <div class="mt-12 animate-bounce opacity-40">
+                <i class="fa-solid fa-chevron-down text-2xl"></i>
+            </div>
+            <p class="mt-2 text-xs opacity-50 uppercase">Desliza para ver tu tabla</p>
+        </section>
+
+        <section id="grid-section" class="section">
+            <div class="card-grid" id="card-grid">
+                <!-- Cards will be injected here -->
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const CARDS = [
+            { id: 1, name: "El Gallo", icon: "fa-solid fa-feather-pointed", poem: "El que le cantó a San Pedro, no le volverá a cantar." },
+            { id: 2, name: "El Diablito", icon: "fa-solid fa-mask", poem: "Pórtate bien cuatito, si no te lleva el coloradito." },
+            { id: 3, name: "La Dama", icon: "fa-solid fa-person-dress", poem: "La dama pulida y fina, en la calle se encamina." },
+            { id: 4, name: "El Catrín", icon: "fa-solid fa-user-tie", poem: "Don Ferruco en la alameda, su bastón quería tirar." },
+            { id: 5, name: "El Árbol", icon: "fa-solid fa-tree", poem: "El que a buen árbol se arrima, buena sombra lo cobija." },
+            { id: 6, name: "La Muerte", icon: "fa-solid fa-skull", poem: "La muerte tilica y flaca, la que a todos nos saca." },
+            { id: 7, name: "La Luna", icon: "fa-solid fa-moon", poem: "El que a la luna mira, el que a la luna se va." },
+            { id: 8, name: "El Sol", icon: "fa-solid fa-sun", poem: "La cobija de los pobres." },
+            { id: 9, name: "El Corazón", icon: "fa-solid fa-heart", poem: "No me extrañes corazón, que regreso en el camión." }
+        ];
+
+        let gameState = {
+            currentRound: 0,
+            roundsToWin: 3,
+            selectedOrder: [],
+            correctOrder: [],
+            isScrollingLocked: false,
+            isTouching: false,
+            gameActive: true
+        };
+
+        // Prepare the sequence for this game
+        function initGame() {
+            gameState.correctOrder = [...CARDS].sort(() => 0.5 - Math.random()).slice(0, gameState.roundsToWin);
+            gameState.currentRound = 0;
+            gameState.selectedOrder = [];
+            gameState.gameActive = true;
+            renderGrid();
+            updatePoem();
+            window.scrollTo(0, 0);
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('card-grid');
+            grid.innerHTML = '';
+            
+            // Shuffle all cards for the display grid
+            const displayCards = [...CARDS].sort(() => 0.5 - Math.random());
+            
+            displayCards.forEach(card => {
+                const div = document.createElement('div');
+                div.className = 'loteria-card';
+                div.dataset.id = card.id;
+                div.innerHTML = `
+                    <span class="card-number">${card.id}</span>
+                    <i class="${card.icon}"></i>
+                    <span class="card-name">${card.name}</span>
+                `;
+                div.addEventListener('touchstart', (e) => handleTap(e, card.id));
+                div.addEventListener('click', (e) => handleTap(e, card.id));
+                grid.appendChild(div);
+            });
+        }
+
+        function updatePoem() {
+            const poemEl = document.getElementById('current-poem');
+            poemEl.innerText = `"${gameState.correctOrder[gameState.currentRound].poem}"`;
+        }
+
+        let scrollTimeout;
+        
+        window.addEventListener('touchstart', () => { gameState.isTouching = true; });
+        window.addEventListener('touchend', () => { 
+            gameState.isTouching = false; 
+            handleScrollSnap();
+        });
+        
+        // Desktop support
+        window.addEventListener('mousedown', () => { gameState.isTouching = true; });
+        window.addEventListener('mouseup', () => { 
+            gameState.isTouching = false; 
+            handleScrollSnap();
+        });
+
+        function handleScrollSnap() {
+            if (!gameState.isTouching && window.scrollY < window.innerHeight / 2) {
+                // If user lets go and is in the top half, pull down to the grid
+                window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+            }
+        }
+
+        // Monitoring scroll to force downward state
+        window.addEventListener('scroll', () => {
+            if (!gameState.isTouching && !gameState.isScrollingLocked) {
+                if (window.scrollY > 10 && window.scrollY < window.innerHeight) {
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(() => {
+                        if (!gameState.isTouching) {
+                            window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+                        }
+                    }, 100);
+                }
+            }
+        });
+
+        function createRipple(x, y, parent) {
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const ripple = document.createElement('div');
+                    ripple.className = 'ripple';
+                    const size = 60;
+                    ripple.style.width = ripple.style.height = `${size}px`;
+                    ripple.style.left = `${x - size / 2}px`;
+                    ripple.style.top = `${y - size / 2}px`;
+                    parent.appendChild(ripple);
+                    setTimeout(() => ripple.remove(), 800);
+                }, i * 200);
+            }
+        }
+
+        function showMessage(msg, duration = 2000) {
+            const overlay = document.getElementById('message-overlay');
+            overlay.innerText = msg;
+            overlay.style.display = 'block';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, duration);
+        }
+
+        function handleTap(e, cardId) {
+            if (!gameState.gameActive || gameState.isScrollingLocked) return;
+            if (window.scrollY < window.innerHeight - 50) return; // Prevent tapping while looking at poem
+
+            const rect = e.currentTarget.getBoundingClientRect();
+            const touch = e.touches ? e.touches[0] : e;
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            // Visual feedback
+            createRipple(x, y, e.currentTarget);
+            e.currentTarget.classList.add('selected');
+            gameState.isScrollingLocked = true;
+
+            const correctId = gameState.correctOrder[gameState.currentRound].id;
+
+            setTimeout(() => {
+                if (cardId === correctId) {
+                    gameState.currentRound++;
+                    
+                    if (gameState.currentRound >= gameState.roundsToWin) {
+                        showMessage("¡LOTERÍA! 🎉");
+                        setTimeout(() => {
+                            window.location.href = "https://www.google.com";
+                        }, 1500);
+                    } else {
+                        showMessage("¡Buenas!");
+                        // Scroll back to poem for next clue
+                        setTimeout(() => {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            setTimeout(() => {
+                                updatePoem();
+                                renderGrid(); // Re-render to clear selections
+                                gameState.isScrollingLocked = false;
+                            }, 600);
+                        }, 800);
+                    }
+                } else {
+                    showMessage("💔 ¡Perdiste! Reiniciando...");
+                    gameState.gameActive = false;
+                    setTimeout(() => {
+                        initGame();
+                        gameState.isScrollingLocked = false;
+                    }, 2000);
+                }
+            }, 1000);
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            initGame();
+            // Start at grid for mobile focus, or let them see poem?
+            // Requirement says "Automatically pulls down to grid" if not holding.
+            setTimeout(() => {
+                window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
