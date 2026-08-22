@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TERMINAL - JOY PROTOCOL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --terminal-green: #00ff41;
+            --terminal-dim: #004400; /* Slightly brighter initial standby color for visibility */
+            --bg-black: #050505;
+            
+            /* Target Colors (Bottom Up Progression) */
+            --color-red: 239, 68, 68;    
+            --color-yellow: 234, 179, 8;  
+            --color-blue: 59, 130, 246;   
+            --color-orange: 249, 115, 22; 
+            --color-green: 34, 197, 94;   
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: var(--terminal-green);
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            z-index: 100;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 101;
+            background: linear-gradient(0deg, transparent 0%, rgba(0, 255, 65, 0.03) 50%, transparent 100%);
+            position: absolute;
+            bottom: 100%;
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scanline {
+            0% { bottom: 100%; }
+            100% { bottom: -100px; }
+        }
+
+        .pentagon-container {
+            position: relative;
+            width: 340px;
+            height: 340px;
+            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+            background: #0a0a0a;
+            border: 2px solid #111;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .slice {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            transition: filter 0.15s ease, background-color 0.8s ease, opacity 0.8s ease;
+            -webkit-tap-highlight-color: transparent;
+            background-color: var(--terminal-dim); 
+            opacity: 0.45; /* Increased starting opacity for friendlier mobile interaction */
+        }
+
+        /* Slice Geometry (Center to Vertex) */
+        .slice-p0 { clip-path: polygon(50% 50%, 50% 0%, 100% 38%); } /* Mid Right */
+        .slice-p1 { clip-path: polygon(50% 50%, 100% 38%, 82% 100%); } /* Bottom Right */
+        .slice-p2 { clip-path: polygon(50% 50%, 82% 100%, 18% 100%); } /* Bottom Left */
+        .slice-p3 { clip-path: polygon(50% 50%, 18% 100%, 0% 38%); } /* Mid Left */
+        .slice-p4 { clip-path: polygon(50% 50%, 0% 38%, 50% 0%); } /* Top Center */
+
+        .slice.active {
+            filter: brightness(2.5) contrast(1.2) saturate(1.5);
+            opacity: 1 !important;
+            z-index: 20;
+        }
+
+        .terminal-border {
+            border: 1px solid var(--terminal-green);
+            background: rgba(0, 255, 65, 0.02);
+        }
+
+        .timer-bar {
+            height: 2px;
+            background: #ff4100;
+            width: 100%;
+            transition: width 1.75s linear;
+        }
+
+        * { user-select: none; -webkit-user-select: none; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="scanline"></div>
+
+    <div id="start-screen" class="w-full max-w-lg text-center space-y-8 z-10 p-6">
+        <div class="space-y-4">
+            <h1 class="text-3xl font-bold tracking-[0.3em] uppercase">HARMONIC_LINK v11.0</h1>
+            <div class="terminal-border p-2 inline-block px-6 py-2">
+                <span class="animate-pulse">_ PROTOCOL: BEETHOVEN_JOY</span>
+            </div>
+        </div>
+        
+        <div class="terminal-border p-8 space-y-6">
+            <p class="text-[10px] leading-relaxed text-stone-500 uppercase tracking-widest">
+                Warning: 1.75s Response Watchdog Active<br>
+                Hardware Status: Low Power (Monochrome Standby)<br>
+                Target: Complete Symphony Decryption
+            </p>
+            <button onclick="startGame()" class="w-full py-4 bg-[#00ff41] text-black font-bold uppercase tracking-widest hover:bg-[#00cc33] transition-all">
+                Initiate Uplink
+            </button>
+        </div>
+    </div>
+
+    <div id="game-screen" class="hidden w-full max-w-lg flex flex-col items-center space-y-6 z-10">
+        <div class="w-full flex justify-between items-end text-[10px]">
+            <div class="space-y-2">
+                <p class="text-stone-500 uppercase tracking-widest">Decryption: <span id="progress-percent">0</span>%</p>
+                <div class="w-48 h-1 bg-stone-900 border border-[#00ff41]/20">
+                    <div id="progress-bar" class="h-full bg-[#00ff41]" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="text-right space-y-1">
+                <p id="status-text" class="text-xs uppercase">Connecting...</p>
+                <p id="depth-text" class="text-stone-400">DEPTH: 0 / 31</p>
+            </div>
+        </div>
+
+        <!-- Watchdog Timer Visual -->
+        <div class="w-full h-1 bg-stone-900 mt-2 overflow-hidden border-x border-[#00ff41]/10">
+            <div id="timer-visual" class="timer-bar" style="width: 100%"></div>
+        </div>
+
+        <div class="pentagon-container mt-4" id="board">
+            <!-- Non-sequential mapping implemented in JS logic -->
+            <div id="slice-pos-0" class="slice slice-p0" onclick="handleSliceClick(0)"></div>
+            <div id="slice-pos-1" class="slice slice-p1" onclick="handleSliceClick(1)"></div>
+            <div id="slice-pos-2" class="slice slice-p2" onclick="handleSliceClick(2)"></div>
+            <div id="slice-pos-3" class="slice slice-p3" onclick="handleSliceClick(3)"></div>
+            <div id="slice-pos-4" class="slice slice-p4" onclick="handleSliceClick(4)"></div>
+        </div>
+
+        <div id="terminal-log" class="w-full h-16 border border-[#00ff41]/10 mt-4 overflow-y-auto text-[9px] text-[#00ff41]/30 p-2 font-mono">
+            <div>> Handshake verified. Standby for audio pattern.</div>
+        </div>
+    </div>
+
+    <div id="success-screen" class="hidden w-full max-w-lg text-center space-y-6 z-10 p-4">
+        <h2 class="text-3xl font-bold uppercase tracking-widest text-[#00ff41]">Access Granted</h2>
+        <div class="terminal-border p-8 text-left space-y-4">
+            <p class="text-white text-sm leading-relaxed">
+                <span class="text-[#00ff41] font-bold">NODE_COMPLETE:</span><br>
+                The monochrome barrier has been dissolved. Frequency lock released.
+            </p>
+            <div class="bg-[#00ff41]/5 p-4 border-l-2 border-[#00ff41] font-mono text-xs">
+                ARCHIVE_REF: BERLIN_GATES<br>
+                KEY: FREUDE_SCHÖNER_GÖTTERFUNKEN
+            </div>
+            <button onclick="location.reload()" class="w-full py-2 border border-[#00ff41] text-[#00ff41] hover:bg-[#00ff41] transition-all uppercase text-xs">
+                End Connection
+            </button>
+        </div>
+    </div>
+
+    <div id="game-over-screen" class="hidden w-full max-w-md text-center space-y-8 z-10">
+        <h2 class="text-4xl font-bold text-red-600 uppercase">Sync Failure</h2>
+        <div class="terminal-border border-red-900/50 p-8 space-y-6">
+            <p id="fail-reason" class="text-xs text-stone-400">Sequence mismatch detected.</p>
+            <button onclick="startGame()" class="w-full py-4 bg-red-950/20 border border-red-600 text-red-500 font-bold uppercase hover:bg-red-600 hover:text-white transition-all">
+                Re-Init Protocol
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const FULL_MELODY = [
+            2, 2, 3, 4, 4, 3, 2, 1, 0, 0, 1, 2, 2, 1, 1, 
+            2, 2, 3, 4, 4, 3, 2, 1, 0, 0, 1, 2, 1, 0, 0
+        ];
+
+        // Scrambled Mapping (Note to Physical Position)
+        // Position 0 = Mid Right, 1 = Bot Right, 2 = Bot Left, 3 = Mid Left, 4 = Top
+        const POS_TO_NOTE = { 0: 2, 1: 0, 2: 1, 3: 3, 4: 4 };
+        const NOTE_TO_POS = { 0: 1, 1: 2, 2: 0, 3: 3, 4: 4 };
+        
+        const COLORS = [
+            [239, 68, 68],   // Note 0: Red
+            [234, 179, 8],   // Note 1: Yellow
+            [59, 130, 246],  // Note 2: Blue
+            [249, 115, 22],  // Note 3: Orange
+            [34, 197, 94]    // Note 4: Green
+        ];
+
+        let sequenceProgress = 1; 
+        let playerSequence = [];
+        let isPlayingSequence = false;
+        let audioContext = null;
+        let inputTimer = null;
+        const TIME_LIMIT = 1750;
+
+        const frequencies = [261.63, 293.66, 329.63, 349.23, 392.00];
+
+        function logToTerminal(msg) {
+            const log = document.getElementById('terminal-log');
+            const div = document.createElement('div');
+            div.innerText = `> ${msg}`;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function initAudio() {
+            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playTone(noteIndex) {
+            initAudio();
+            const osc = audioContext.createOscillator();
+            const g = audioContext.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(frequencies[noteIndex], audioContext.currentTime);
+            g.gain.setValueAtTime(0, audioContext.currentTime);
+            g.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05);
+            g.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.8);
+            osc.connect(g); g.connect(audioContext.destination);
+            osc.start(); osc.stop(audioContext.currentTime + 0.8);
+
+            const pos = NOTE_TO_POS[noteIndex];
+            const slice = document.getElementById(`slice-pos-${pos}`);
+            slice.classList.add('active');
+            setTimeout(() => slice.classList.remove('active'), 400);
+        }
+
+        async function playSequence() {
+            isPlayingSequence = true;
+            stopTimer();
+            document.getElementById('status-text').innerText = "OBSERVING...";
+            
+            await new Promise(r => setTimeout(r, 1000));
+            for (let i = 0; i < sequenceProgress; i++) {
+                playTone(FULL_MELODY[i]);
+                await new Promise(r => setTimeout(r, 650));
+            }
+            isPlayingSequence = false;
+            document.getElementById('status-text').innerText = "INPUT REQUIRED";
+            startTimer();
+        }
+
+        function startTimer() {
+            stopTimer();
+            const bar = document.getElementById('timer-visual');
+            bar.style.transition = 'none';
+            bar.style.width = '100%';
+            void bar.offsetWidth; // Force reflow
+            bar.style.transition = `width ${TIME_LIMIT}ms linear`;
+            bar.style.width = '0%';
+            inputTimer = setTimeout(() => endGame("Temporal timeout: Uplink severed."), TIME_LIMIT);
+        }
+
+        function stopTimer() {
+            clearTimeout(inputTimer);
+            const bar = document.getElementById('timer-visual');
+            bar.style.transition = 'none';
+            bar.style.width = '100%';
+        }
+
+        function updateProgress() {
+            const overallMaxProgress = (sequenceProgress / FULL_MELODY.length) * 100;
+            
+            document.getElementById('progress-bar').style.width = `${overallMaxProgress}%`;
+            document.getElementById('progress-percent').innerText = Math.floor(overallMaxProgress);
+            document.getElementById('depth-text').innerText = `DEPTH: ${sequenceProgress} / 31`;
+
+            const ratio = (sequenceProgress / FULL_MELODY.length); 
+            const startColor = [0, 68, 0]; // Brighter dull green baseline
+
+            for(let i=0; i<5; i++) {
+                const el = document.getElementById(`slice-pos-${i}`);
+                const note = POS_TO_NOTE[i];
+                const targetColor = COLORS[note];
+                
+                const r = Math.round(startColor[0] + (targetColor[0] - startColor[0]) * ratio);
+                const g = Math.round(startColor[1] + (targetColor[1] - startColor[1]) * ratio);
+                const b = Math.round(startColor[2] + (targetColor[2] - startColor[2]) * ratio);
+                
+                const opacity = 0.45 + (ratio * 0.35); // Friendlier mobile visibility
+
+                el.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+                el.style.opacity = opacity;
+            }
+        }
+
+        function handleSliceClick(posIndex) {
+            if (isPlayingSequence) return;
+            
+            const noteIndex = POS_TO_NOTE[posIndex];
+            playTone(noteIndex);
+            
+            const currentStep = playerSequence.length;
+            if (noteIndex !== FULL_MELODY[currentStep]) {
+                endGame("Signal rejection: Harmonic mismatch.");
+                return;
+            }
+
+            playerSequence.push(noteIndex);
+            
+            if (playerSequence.length === sequenceProgress) {
+                stopTimer();
+                updateProgress();
+                if (sequenceProgress === FULL_MELODY.length) {
+                    showScreen('success-screen');
+                } else {
+                    sequenceProgress++;
+                    playerSequence = [];
+                    setTimeout(playSequence, 800);
+                }
+            } else {
+                startTimer();
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            sequenceProgress = 1;
+            playerSequence = [];
+            stopTimer();
+            updateProgress();
+            showScreen('game-screen');
+            logToTerminal(`Initializing Depth: ${sequenceProgress}/31`);
+            playSequence();
+        }
+
+        function endGame(reason) {
+            stopTimer();
+            document.getElementById('fail-reason').innerText = reason;
+            showScreen('game-over-screen');
+            const osc = audioContext.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(50, audioContext.currentTime);
+            const g = audioContext.createGain();
+            g.gain.setValueAtTime(0.1, audioContext.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1);
+            osc.connect(g); g.connect(audioContext.destination);
+            osc.start(); osc.stop(audioContext.currentTime + 1);
+        }
+
+        function showScreen(id) {
+            ['start-screen', 'game-screen', 'game-over-screen', 'success-screen'].forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
