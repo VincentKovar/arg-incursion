@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aetheric Dowsing Interface</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #d0eaff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevents scrolling during touch */
+            -webkit-touch-callout: none; /* Prevents default iOS touch menu */
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        #ui-container {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        #status-display {
+            font-size: 1.2rem;
+            min-height: 2.4rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        #readout-panel {
+            border: 2px solid #333;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #readout-panel.visible {
+            opacity: 1;
+        }
+
+        .data-label { color: #888; }
+        .data-value { font-weight: bold; color: #fff; }
+
+        #dowsing-target {
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, #222 0%, #111 60%, #000 100%);
+            border: 4px solid #333;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.3s, box-shadow 0.3s;
+            overflow: hidden; /* Contains the scan line */
+            touch-action: none; /* Crucial: Disables browser handling of gestures */
+        }
+
+        #dowsing-target:active {
+            border-color: #00ffff;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+
+        /* The animated 'Ley Line' scan */
+        #scan-line {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: rgba(0, 255, 255, 0.8);
+            top: -10px;
+            left: 0;
+            box-shadow: 0 0 15px #00ffff;
+            opacity: 0;
+        }
+
+        @keyframes scan {
+            0% { top: -10px; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        #dowsing-target.scanning #scan-line {
+            opacity: 1;
+            animation: scan 2s linear infinite;
+        }
+
+        /* Subtle etheric noise pattern */
+        #dowsing-target::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36z8gAFWNhYfEfi4+PjwAVMAG5CQB9CQwF6L5YowAAAABJRU5ErkJggg==');
+            opacity: 0.05;
+        }
+
+        #etheric-charge-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #222;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        #charge-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #003333, #00ffff);
+            box-shadow: 0 0 10px #00ffff;
+            transition: width 0.1s linear;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="ui-container">
+        <div id="status-display">Calibrating...</div>
+
+        <div id="dowsing-target">
+            <div id="scan-line"></div>
+        </div>
+
+        <div id="etheric-charge-bar">
+            <div id="charge-fill"></div>
+        </div>
+
+        <div id="readout-panel">
+            <div><span class="data-label">Session ID:</span> <span class="data-value" id="session-id"></span></div>
+            <div><span class="data-label">Duration:</span> <span class="data-value" id="hold-duration"></span>s</div>
+            <div style="font-size: 1.4rem; margin-top: 10px;">
+                <span class="data-label">Aetheric Intensity:</span><br>
+                <span class="data-value" id="intensity-result" style="color: #00ffff;">--</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusDisplay = document.getElementById('status-display');
+        const target = document.getElementById('dowsing-target');
+        const chargeFill = document.getElementById('charge-fill');
+        const readoutPanel = document.getElementById('readout-panel');
+        const intensityResult = document.getElementById('intensity-result');
+        const durationDisplay = document.getElementById('hold-duration');
+        const sessionDisplay = document.getElementById('session-id');
+
+        let holdStartTime = 0;
+        let holdTimerInterval = null;
+        let isScanning = false;
+        const MIN_HOLD_TIME_MS = 1500; // Minimum time needed to get a reading
+        const MAX_HOLD_TIME_MS = 6000; // Time needed to 'fully charge'
+
+        // Function to generate pseudo-scientific results
+        function generateEthericResult(durationMs) {
+            // A hidden multiplier based on something random (like performance.now) 
+            // combined with the duration.
+            const rawScalar = (performance.now() % 100) / 100; // 0.0 to 1.0
+            const durationBonus = (durationMs / MAX_HOLD_TIME_MS); // 0.0 to 1.0
+
+            const intensityScore = Math.round((rawScalar * 50) + (durationBonus * 50));
+            
+            // Generate a 'classification' based on score
+            let classification = "";
+            if (intensityScore < 20) classification = "Vestigial Current";
+            else if (intensityScore < 50) classification = "Harmonic Resonance";
+            else if (intensityScore < 80) classification = "Minor Ley Node";
+            else classification = "MAJOR CONFLUENCE";
+
+            // Return a stylized string
+            return `${intensityScore}.0 εq (${classification})`;
+        }
+
+        function startScanning(e) {
+            // Standardizing touch vs mouse events
+            if (e.type === 'touchstart') e.preventDefault();
+            
+            if (isScanning) return; // Prevent double trigger
+            isScanning = true;
+
+            // Reset UI for new scan
+            readoutPanel.classList.remove('visible');
+            intensityResult.textContent = "--";
+            sessionDisplay.textContent = Math.random().toString(16).substring(2, 8).toUpperCase();
+            
+            holdStartTime = Date.now();
+            statusDisplay.textContent = "Establishing Attunement...";
+            statusDisplay.style.color = "#888";
+            target.classList.add('scanning');
+
+            // --- VIBRATION (Haptics) ---
+            // Start with subtle, slow pulses. Web Vibration API requires user interaction.
+            if ('vibrate' in navigator) {
+                // Short pulse, long pause
+                navigator.vibrate([50, 500, 50, 500]); 
+            }
+
+            // --- PROGRESS LOOP ---
+            holdTimerInterval = setInterval(() => {
+                const elapsed = Date.now() - holdStartTime;
+                const progressPercent = Math.min(100, (elapsed / MAX_HOLD_TIME_MS) * 100);
+                chargeFill.style.width = `${progressPercent}%`;
+
+                // Dynamic Status and Haptics based on duration
+                if (elapsed > MAX_HOLD_TIME_MS) {
+                    statusDisplay.textContent = "Aetheric Saturation Reached!";
+                    statusDisplay.style.color = "#00ffff";
+                    if ('vibrate' in navigator) navigator.vibrate([200, 50, 200, 50]); // Intense pulses
+                } else if (elapsed > MIN_HOLD_TIME_MS * 2) {
+                    statusDisplay.textContent = "Ley Line Detected! Holding...";
+                    statusDisplay.style.color = "#fff";
+                    if ('vibrate' in navigator) navigator.vibrate([100, 100]); // Steady hum
+                } else if (elapsed > MIN_HOLD_TIME_MS) {
+                    statusDisplay.textContent = "Sensing Weak Resonance...";
+                    statusDisplay.style.color = "#d0eaff";
+                    if ('vibrate' in navigator) navigator.vibrate([50, 200, 50, 200]); // Moderate pulses
+                }
+            }, 100); // Update UI/Haptics every 100ms
+        }
+
+        function stopScanning(e) {
+            if (!isScanning) return;
+            isScanning = false;
+
+            target.classList.remove('scanning');
+            clearInterval(holdTimerInterval);
+            const holdDurationMs = Date.now() - holdStartTime;
+            const holdDurationSecs = (holdDurationMs / 1000).toFixed(2);
+            chargeFill.style.width = '0%'; // Reset bar
+
+            // Stop Vibration
+            if ('vibrate' in navigator) navigator.vibrate(0);
+
+            if (holdDurationMs < MIN_HOLD_TIME_MS) {
+                // Interrupted
+                statusDisplay.textContent = "Attunement Broken: Hold Longer";
+                statusDisplay.style.color = "#ff4444";
+                if ('vibrate' in navigator) navigator.vibrate(300); // Short 'error' buzz
+            } else {
+                // Successful Scan
+                statusDisplay.textContent = "Aetheric Analysis Complete";
+                statusDisplay.style.color = "#00ff00";
+
+                durationDisplay.textContent = holdDurationSecs;
+                intensityResult.textContent = generateEthericResult(holdDurationMs);
+                readoutPanel.classList.add('visible');
+            }
+        }
+
+        // Initialize display
+        statusDisplay.textContent = "Locate Target & HOLD";
+
+        // --- EVENT LISTENERS ---
+        // Must handle both Touch (mobile) and Mouse (testing)
+
+        // START hold
+        target.addEventListener('touchstart', startScanning);
+        target.addEventListener('mousedown', startScanning);
+
+        // END hold (on the element itself)
+        target.addEventListener('touchend', stopScanning);
+        target.addEventListener('mouseup', stopScanning);
+
+        // CANCEL hold (finger/mouse moves off the element)
+        target.addEventListener('touchcancel', stopScanning);
+        target.addEventListener('mouseleave', stopScanning);
+
+    </script>
+</body>
+</html>
