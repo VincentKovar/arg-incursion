@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bureau of Applied Play & Games — Intake</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: #f5f0e8;
+    color: #2c2c2a;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+    margin: 0;
+  }
+  .card {
+    background: #fffdf8;
+    border: 1px solid #d3d1c7;
+    border-radius: 6px;
+    padding: 28px 26px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #d3d1c7;
+  }
+  .header .kicker {
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #7a7870;
+    margin: 0;
+  }
+  .header h1 {
+    font-size: 20px;
+    margin: 6px 0 0;
+    font-weight: normal;
+  }
+  .header .form-id {
+    font-size: 12px;
+    color: #7a7870;
+    margin: 4px 0 0;
+    font-style: italic;
+  }
+  .question {
+    font-size: 15px;
+    font-weight: bold;
+    margin: 4px 0 14px;
+  }
+  .opt-btn, .word-btn, .scene-btn {
+    font-family: inherit;
+    cursor: pointer;
+    background: #f5f0e8;
+    border: 1px solid #b4b2a9;
+    border-radius: 4px;
+    color: #2c2c2a;
+  }
+  .opt-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  .opt-btn.selected, .word-btn.selected, .scene-btn.selected {
+    background: #e1f5ee;
+    border-color: #1d9e75;
+  }
+  .scene-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .scene-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 8px;
+    font-size: 13px;
+  }
+  .scene-btn .emoji-fallback {
+    font-size: 22px;
+  }
+  .word-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .word-btn {
+    padding: 9px;
+    font-size: 13px;
+  }
+  .slider-wrap { padding: 4px 4px 0; }
+  input[type=range] { width: 100%; }
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #7a7870;
+    margin-top: 4px;
+  }
+  .footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 18px;
+  }
+  .progress { font-size: 12px; color: #7a7870; }
+  button.next {
+    font-family: inherit;
+    background: #2c2c2a;
+    color: #fffdf8;
+    border: none;
+    border-radius: 4px;
+    padding: 9px 18px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button.next:hover { background: #444441; }
+  .err {
+    font-size: 13px;
+    color: #a32d2d;
+    margin: 8px 0 0;
+    display: none;
+  }
+  .bar-row { margin-bottom: 14px; }
+  .bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  .bar-track {
+    height: 10px;
+    background: #eceae2;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.6s ease;
+  }
+  .bar-fill.paidia { background: #1d9e75; }
+  .bar-fill.ludus { background: #d85a30; }
+  .rec-box {
+    background: #f5f0e8;
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin: 14px 0;
+  }
+  .rec-headline {
+    font-size: 15px;
+    font-weight: bold;
+    margin: 0 0 4px;
+  }
+  .rec-body {
+    font-size: 13px;
+    color: #444441;
+    margin: 0;
+    line-height: 1.6;
+  }
+  button.file-btn {
+    font-family: inherit;
+    width: 100%;
+    background: #fffdf8;
+    border: 1px solid #b4b2a9;
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #patient-file {
+    display: none;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #d3d1c7;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  #patient-file .file-kicker {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: #7a7870;
+    margin: 0 0 8px;
+  }
+  #results { display: none; margin-top: 14px; }
+</style>
+</head>
+<body>
+
+<div class="card" id="quiz-card">
+  <div class="header">
+    <p class="kicker">Bureau of Applied Play &amp; Games</p>
+    <h1>New patient intake</h1>
+    <p class="form-id">form PL-7 &middot; please answer honestly</p>
+  </div>
+
+  <div id="quiz-body"></div>
+
+  <div class="footer-row">
+    <span class="progress" id="progress">question 1 of 7</span>
+    <button class="next" id="next-btn">Next</button>
+  </div>
+  <p class="err" id="err">Pick an answer before continuing.</p>
+</div>
+
+<div class="card" id="results">
+  <div class="header">
+    <p class="kicker">Bureau of Applied Play &amp; Games</p>
+    <h1>Triage results</h1>
+  </div>
+
+  <div class="bar-row">
+    <div class="bar-label"><span>Paidia affinity</span><span id="paidia-score">0%</span></div>
+    <div class="bar-track"><div class="bar-fill paidia" id="paidia-bar"></div></div>
+  </div>
+  <div class="bar-row">
+    <div class="bar-label"><span>Ludus affinity</span><span id="ludus-score">0%</span></div>
+    <div class="bar-track"><div class="bar-fill ludus" id="ludus-bar"></div></div>
+  </div>
+
+  <div class="rec-box">
+    <p class="rec-headline" id="rec-headline"></p>
+    <p class="rec-body" id="rec-body"></p>
+  </div>
+
+  <button class="file-btn" id="file-btn">View patient file</button>
+
+  <div id="patient-file">
+    <p class="file-kicker">chart note &middot; confidential</p>
+    <div id="file-content"></div>
+  </div>
+</div>
+
+<script>
+const questions = [
+  {
+    type: 'mc',
+    q: "A friend invites you over and says \"let's just see what happens.\" You feel:",
+    opts: [
+      {label: "Delighted, no plan is the best plan", p: 2, l: 0},
+      {label: "Fine, but I'll suggest a game within ten minutes", p: 1, l: 1},
+      {label: "Mildly anxious, what are we optimizing for", p: 0, l: 2}
+    ]
+  },
+  {
+    type: 'slider',
+    q: "Comfort with unstructured, goalless time",
+    left: "fidgety", right: "could do this all day",
+    name: 'unstructured'
+  },
+  {
+    type: 'slider',
+    q: "Reaction to losing a game",
+    left: "shrug, wasn't the point", right: "immediate rematch",
+    name: 'losing'
+  },
+  {
+    type: 'scene',
+    q: "Which room would you rather be handed the keys to?",
+    opts: [
+      {label: "Sandbox", emoji: "🏖️", p: 2, l: 0},
+      {label: "Chess hall", emoji: "♞", p: 0, l: 2},
+      {label: "Blanket fort", emoji: "🏠", p: 2, l: 0},
+      {label: "Puzzle room", emoji: "🧩", p: 1, l: 2}
+    ]
+  },
+  {
+    type: 'grid',
+    q: "Tap every word that resonates:",
+    words: ["rules", "freedom", "structure", "wandering", "strategy", "mess", "goal", "drift"],
+    weights: {rules:{p:0,l:1}, freedom:{p:1,l:0}, structure:{p:0,l:1}, wandering:{p:1,l:0}, strategy:{p:0,l:1}, mess:{p:1,l:0}, goal:{p:0,l:1}, drift:{p:1,l:0}}
+  },
+  {
+    type: 'mc',
+    q: "Handed a rulebook you've never seen, your instinct is to:",
+    opts: [
+      {label: "Ignore it, make up something better", p: 2, l: 0},
+      {label: "Skim it, then house-rule freely", p: 1, l: 1},
+      {label: "Read it cover to cover first", p: 0, l: 2}
+    ]
+  },
+  {
+    type: 'mc',
+    q: "Your ideal Sunday afternoon involves:",
+    opts: [
+      {label: "Wandering with no destination", p: 2, l: 0},
+      {label: "A tournament bracket among friends", p: 0, l: 2},
+      {label: "A bit of both, unbothered either way", p: 1, l: 1}
+    ]
+  }
+];
+
+let idx = 0;
+const answers = new Array(questions.length).fill(null);
+
+function renderQuestion() {
+  const q = questions[idx];
+  const body = document.getElementById('quiz-body');
+  document.getElementById('progress').textContent = 'question ' + (idx+1) + ' of ' + questions.length;
+  document.getElementById('err').style.display = 'none';
+
+  let html = '<p class="question">' + q.q + '</p>';
+
+  if (q.type === 'mc') {
+    html += '<div>';
+    q.opts.forEach((o, i) => {
+      const sel = answers[idx] === i ? ' selected' : '';
+      html += '<button class="opt-btn' + sel + '" data-i="' + i + '">' + o.label + '</button>';
+    });
+    html += '</div>';
+  } else if (q.type === 'slider') {
+    const val = answers[idx] !== null ? answers[idx] : 5;
+    html += '<div class="slider-wrap">';
+    html += '<input type="range" min="0" max="10" step="1" value="' + val + '" id="slider-input">';
+    html += '<div class="slider-labels"><span>' + q.left + '</span><span>' + q.right + '</span></div>';
+    html += '</div>';
+  } else if (q.type === 'scene') {
+    html += '<div class="scene-grid">';
+    q.opts.forEach((o, i) => {
+      const sel = answers[idx] === i ? ' selected' : '';
+      html += '<button class="scene-btn' + sel + '" data-i="' + i + '"><span class="emoji-fallback">' + o.emoji + '</span><span>' + o.label + '</span></button>';
+    });
+    html += '</div>';
+  } else if (q.type === 'grid') {
+    const sel = answers[idx] || [];
+    html += '<div class="word-grid">';
+    q.words.forEach((w) => {
+      const isSel = sel.includes(w) ? ' selected' : '';
+      html += '<button class="word-btn' + isSel + '" data-w="' + w + '">' + w + '</button>';
+    });
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+
+  if (q.type === 'mc' || q.type === 'scene') {
+    body.querySelectorAll('.opt-btn, .scene-btn').forEach(btn => {
+      btn.addEventListener('click', () => { answers[idx] = parseInt(btn.dataset.i); renderQuestion(); });
+    });
+  } else if (q.type === 'grid') {
+    body.querySelectorAll('.word-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const w = btn.dataset.w;
+        let cur = answers[idx] || [];
+        if (cur.includes(w)) cur = cur.filter(x => x !== w); else cur = cur.concat([w]);
+        answers[idx] = cur;
+        renderQuestion();
+      });
+    });
+  } else if (q.type === 'slider') {
+    document.getElementById('slider-input').addEventListener('input', (e) => {
+      answers[idx] = parseInt(e.target.value);
+    });
+    if (answers[idx] === null) answers[idx] = 5;
+  }
+}
+
+function computeScores() {
+  let paidia = 0, ludus = 0, maxP = 0, maxL = 0;
+  questions.forEach((q, i) => {
+    const a = answers[i];
+    if (q.type === 'mc' || q.type === 'scene') {
+      const o = q.opts[a];
+      paidia += o.p; ludus += o.l;
+      maxP += 2; maxL += 2;
+    } else if (q.type === 'slider') {
+      if (q.name === 'unstructured') { paidia += a; maxP += 10; }
+      if (q.name === 'losing') { ludus += a; maxL += 10; }
+    } else if (q.type === 'grid') {
+      (a || []).forEach(w => {
+        paidia += q.weights[w].p; ludus += q.weights[w].l;
+      });
+      maxP += 4; maxL += 4;
+    }
+  });
+  return { paidia, ludus, maxP, maxL };
+}
+
+function showResults() {
+  const { paidia, ludus, maxP, maxL } = computeScores();
+  document.getElementById('quiz-card').style.display = 'none';
+  const results = document.getElementById('results');
+  results.style.display = 'block';
+
+  const pPct = Math.round((paidia / maxP) * 100);
+  const lPct = Math.round((ludus / maxL) * 100);
+  document.getElementById('paidia-score').textContent = pPct + '%';
+  document.getElementById('ludus-score').textContent = lPct + '%';
+  setTimeout(() => {
+    document.getElementById('paidia-bar').style.width = pPct + '%';
+    document.getElementById('ludus-bar').style.width = lPct + '%';
+  }, 50);
+
+  let headline, body;
+  if (pPct - lPct > 15) {
+    headline = 'See a paidiatrician first';
+    body = 'Your intake shows strong open-play affinity and lower comfort with imposed structure. Unstructured, exploratory sessions are likely to be more productive than rule-based ones.';
+  } else if (lPct - pPct > 15) {
+    headline = 'See a ludiatrician first';
+    body = 'Your intake shows strong response to rules, goals, and feedback loops. Structured game-based sessions are likely to be the more effective entry point.';
+  } else {
+    headline = 'Either clinician can take this case';
+    body = 'Your scores are closely balanced between open play and structured games. A co-treatment plan alternating both approaches is recommended.';
+  }
+  document.getElementById('rec-headline').textContent = headline;
+  document.getElementById('rec-body').textContent = body;
+
+  document.getElementById('file-content').innerHTML =
+    '<p style="margin:0 0 8px;"><strong>Rule-response profiling:</strong> ' + (lPct > 50 ? 'patient adapts readily to imposed constraints and engages with defined win-conditions.' : 'patient shows resistance to imposed constraints, prefers self-directed goals.') + '</p>' +
+    '<p style="margin:0 0 8px;"><strong>Symbolic content reading:</strong> ' + (pPct > 50 ? 'exploratory tendencies dominant, recommend free-play observation sessions.' : 'exploratory tendencies present but secondary to structured engagement.') + '</p>' +
+    '<p style="margin:0;"><strong>Feedback-loop sensitivity:</strong> ' + (lPct > 50 ? 'patient responds well to in-system consequences and adjusts strategy accordingly.' : 'patient engagement is intrinsically motivated rather than consequence-driven.') + '</p>';
+}
+
+document.getElementById('next-btn').addEventListener('click', () => {
+  const a = answers[idx];
+  if (a === null || (Array.isArray(a) && a.length === 0)) {
+    document.getElementById('err').style.display = 'block';
+    return;
+  }
+  if (idx < questions.length - 1) {
+    idx++;
+    renderQuestion();
+    document.getElementById('next-btn').textContent = (idx === questions.length - 1) ? 'See results' : 'Next';
+  } else {
+    showResults();
+  }
+});
+
+document.getElementById('file-btn').addEventListener('click', () => {
+  const pf = document.getElementById('patient-file');
+  const show = pf.style.display !== 'block';
+  pf.style.display = show ? 'block' : 'none';
+  document.getElementById('file-btn').textContent = show ? 'Hide patient file' : 'View patient file';
+});
+
+renderQuestion();
+</script>
+
+</body>
+</html>
