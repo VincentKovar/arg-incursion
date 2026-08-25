@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palimpsest Map Workspace</title>
+    <style>
+        :root {
+            --paper-bg: #f4efe6;
+            --ink-primary: #2b2621;
+            --ink-faded: #8c7b6b;
+            --vellum: rgba(244, 239, 230, 0.85);
+            --accent-red: #8b0000;
+            --accent-blue: #1b365d;
+            --border-color: #d3c4b1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background-color: var(--paper-bg);
+            color: var(--ink-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Controls */
+        #sidebar {
+            width: 320px;
+            background: #eae2d3;
+            border-right: 2px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: normal;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--ink-faded);
+            padding-bottom: 8px;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--ink-faded);
+            margin-bottom: 10px;
+        }
+
+        .layer-control {
+            background: var(--paper-bg);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .layer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .layer-header label {
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-red);
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            background: var(--paper-bg);
+            border: 1px solid var(--ink-faded);
+            color: var(--ink-primary);
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button.active, button:hover {
+            background: var(--ink-primary);
+            color: var(--paper-bg);
+        }
+
+        /* Canvas / Map Viewport */
+        #viewport {
+            flex: 1;
+            position: relative;
+            background-color: #dfd5c3;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        .map-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Instructions Overlay */
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: var(--vellum);
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            font-style: italic;
+            font-size: 0.85rem;
+            max-width: 300px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <div>
+            <h1>Palimpsest Map</h1>
+            <p style="font-size: 0.85rem; color: var(--ink-faded); margin-top: 4px;">Stratum & Erasure Workspace</p>
+        </div>
+
+        <div>
+            <div class="section-title">Tools</div>
+            <div class="tool-group">
+                <button id="tool-scratch" class="active" onclick="setTool('scratch')">Scratch / Erase</button>
+                <button id="tool-restore" onclick="setTool('restore')">Restore Vellum</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <label style="font-size: 0.8rem; color: var(--ink-faded);">Scraper Size</label>
+                <input type="range" id="brush-size" min="10" max="80" value="35">
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title">Strata (Layers)</div>
+
+            <div class="layer-control">
+                <div class="layer-header">
+                    <label for="layer-top-toggle">Upper Layer: Modern Text</label>
+                    <input type="checkbox" id="layer-top-toggle" checked onchange="toggleLayer('topCanvas')">
+                </div>
+                <input type="range" id="layer-top-opacity" min="0" max="1" step="0.05" value="1" oninput="setOpacity('topCanvas', this.value)">
+            </div>
+
+            <div class="layer-control">
+                <div class="layer-header">
+                    <label for="layer-mid-toggle">Middle Layer: Antiquarian Map</label>
+                    <input type="checkbox" id="layer-mid-toggle" checked onchange="toggleLayer('midCanvas')">
+                </div>
+                <input type="range" id="layer-mid-opacity" min="0" max="1" step="0.05" value="0.85" oninput="setOpacity('midCanvas', this.value)">
+            </div>
+
+            <div class="layer-control">
+                <div class="layer-header">
+                    <label for="layer-base-toggle">Sub-layer: Ancient Topography</label>
+                    <input type="checkbox" id="layer-base-toggle" checked onchange="toggleLayer('baseCanvas')">
+                </div>
+                <input type="range" id="layer-base-opacity" min="0" max="1" step="0.05" value="1" oninput="setOpacity('baseCanvas', this.value)">
+            </div>
+        </div>
+
+        <button onclick="resetLayers()" style="margin-top: auto;">Reset All Layers</button>
+    </aside>
+
+    <main id="viewport">
+        <!-- Bottom Layer: Primeval Topography -->
+        <canvas id="baseCanvas" class="map-layer"></canvas>
+
+        <!-- Middle Layer: Historical Map -->
+        <canvas id="midCanvas" class="map-layer"></canvas>
+
+        <!-- Top Layer: Erasable Text/Manuscript -->
+        <canvas id="topCanvas" class="map-layer"></canvas>
+
+        <div id="instructions">
+            <strong>Interactive Palimpsest:</strong> Click and drag across the manuscript surface to scrape away the upper strata and reveal older geographical layers underneath.
+        </div>
+    </main>
+
+    <script>
+        const viewport = document.getElementById('viewport');
+        const baseCanvas = document.getElementById('baseCanvas');
+        const midCanvas = document.getElementById('midCanvas');
+        const topCanvas = document.getElementById('topCanvas');
+
+        const baseCtx = baseCanvas.getContext('2d');
+        const midCtx = midCanvas.getContext('2d');
+        const topCtx = topCanvas.getContext('2d');
+
+        let isDrawing = false;
+        let currentTool = 'scratch'; // 'scratch' or 'restore'
+
+        function resizeCanvases() {
+            const width = viewport.clientWidth;
+            const height = viewport.clientHeight;
+
+            [baseCanvas, midCanvas, topCanvas].forEach(canvas => {
+                canvas.width = width;
+                canvas.height = height;
+            });
+
+            renderBaseLayer();
+            renderMidLayer();
+            renderTopLayer();
+        }
+
+        // --- LAYER RENDERING ---
+
+        // Bottom Layer: Ancient Topography & Contour Lines
+        function renderBaseLayer() {
+            const w = baseCanvas.width;
+            const h = baseCanvas.height;
+
+            baseCtx.fillStyle = '#d8cbb5';
+            baseCtx.fillRect(0, 0, w, h);
+
+            // Draw organic contour lines
+            baseCtx.strokeStyle = '#a39278';
+            baseCtx.lineWidth = 1.5;
+
+            for (let i = 0; i < 12; i++) {
+                baseCtx.beginPath();
+                let cx = w / 2 + Math.sin(i) * 100;
+                let cy = h / 2 + Math.cos(i) * 100;
+                let radius = 60 + (i * 35);
+                
+                baseCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+                baseCtx.stroke();
+            }
+
+            // Primitive markers
+            baseCtx.fillStyle = '#8b0000';
+            baseCtx.font = '14px Georgia';
+            baseCtx.fillText('▲ PRIMA VALLIS', w * 0.3, h * 0.4);
+            baseCtx.fillText('≈ MARE ANTIQUUM', w * 0.6, h * 0.7);
+        }
+
+        // Middle Layer: Antiquarian Survey Map
+        function renderMidLayer() {
+            const w = midCanvas.width;
+            const h = midCanvas.height;
+
+            midCtx.clearRect(0, 0, w, h);
+
+            // Vellum tint
+            midCtx.fillStyle = 'rgba(235, 223, 202, 0.9)';
+            midCtx.fillRect(0, 0, w, h);
+
+            // Grid lines
+            midCtx.strokeStyle = 'rgba(27, 54, 93, 0.2)';
+            midCtx.lineWidth = 1;
+
+            const gridSize = 80;
+            for (let x = 0; x < w; x += gridSize) {
+                midCtx.beginPath();
+                midCtx.moveTo(x, 0);
+                midCtx.lineTo(x, h);
+                midCtx.stroke();
+            }
+            for (let y = 0; y < h; y += gridSize) {
+                midCtx.beginPath();
+                midCtx.moveTo(0, y);
+                midCtx.lineTo(w, y);
+                midCtx.stroke();
+            }
+
+            // Roads and rivers
+            midCtx.strokeStyle = '#1b365d';
+            midCtx.lineWidth = 3;
+            midCtx.beginPath();
+            midCtx.moveTo(0, h * 0.2);
+            midCtx.bezierCurveTo(w * 0.4, h * 0.3, w * 0.5, h * 0.8, w, h * 0.8);
+            midCtx.stroke();
+
+            midCtx.fillStyle = '#2b2621';
+            midCtx.font = 'italic 16px Georgia';
+            midCtx.fillText('District IX (Abolished 1842)', w * 0.35, h * 0.35);
+            midCtx.fillText('Old Mill Bridge [Ruins]', w * 0.52, h * 0.75);
+        }
+
+        // Top Layer: Overwritten Manuscript Script
+        function renderTopLayer() {
+            const w = topCanvas.width;
+            const h = topCanvas.height;
+
+            topCtx.fillStyle = '#f4efe6';
+            topCtx.fillRect(0, 0, w, h);
+
+            // Heavy manuscript text lines
+            topCtx.fillStyle = '#2b2621';
+            topCtx.font = '15px Georgia';
+
+            const lineGap = 28;
+            const textSample = "In quorum fidem praesentes litteras fieri et sigilli nostri impressione muniri fecimus. Datum in palatio nostro...";
+
+            for (let y = 40; y < h; y += lineGap) {
+                let opacity = 0.6 + Math.sin(y) * 0.3;
+                topCtx.fillStyle = `rgba(43, 38, 33, ${opacity})`;
+                topCtx.fillText(textSample + " " + textSample, 30, y);
+            }
+        }
+
+        // --- SCRATCH / ERASURE MECHANIC ---
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.getElementById('tool-scratch').classList.toggle('active', tool === 'scratch');
+            document.getElementById('tool-restore').classList.toggle('active', tool === 'restore');
+        }
+
+        function scrape(e) {
+            if (!isDrawing) return;
+
+            const rect = topCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const size = document.getElementById('brush-size').value;
+
+            topCtx.save();
+            if (currentTool === 'scratch') {
+                // Erase top layer to reveal underneath
+                topCtx.globalCompositeOperation = 'destination-out';
+                topCtx.beginPath();
+                topCtx.arc(x, y, size / 2, 0, Math.PI * 2);
+                topCtx.fill();
+            } else {
+                // Restore top layer
+                topCtx.globalCompositeOperation = 'source-over';
+                topCtx.fillStyle = '#f4efe6';
+                topCtx.beginPath();
+                topCtx.arc(x, y, size / 2, 0, Math.PI * 2);
+                topCtx.fill();
+
+                // Re-apply faint text over restored spot
+                topCtx.fillStyle = 'rgba(43, 38, 33, 0.7)';
+                topCtx.font = '15px Georgia';
+                topCtx.fillText("In quorum fidem praesentes...", x - size, y);
+            }
+            topCtx.restore();
+        }
+
+        // Event Listeners for Interaction
+        viewport.addEventListener('mousedown', (e) => { isDrawing = true; scrape(e); });
+        viewport.addEventListener('mousemove', scrape);
+        window.addEventListener('mouseup', () => isDrawing = false);
+
+        // Touch support
+        viewport.addEventListener('touchstart', (e) => { isDrawing = true; scrape(e.touches[0]); });
+        viewport.addEventListener('touchmove', (e) => { scrape(e.touches[0]); });
+        window.addEventListener('touchend', () => isDrawing = false);
+
+        // --- CONTROLS ---
+
+        function toggleLayer(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const checkbox = document.getElementById(`layer-${canvasId.replace('Canvas', '')}-toggle`);
+            canvas.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        function setOpacity(canvasId, val) {
+            document.getElementById(canvasId).style.opacity = val;
+        }
+
+        function resetLayers() {
+            renderTopLayer();
+            renderMidLayer();
+            renderBaseLayer();
+
+            ['top', 'mid', 'base'].forEach(layer => {
+                document.getElementById(`layer-${layer}-toggle`).checked = true;
+                const canvas = document.getElementById(`${layer}Canvas`);
+                canvas.style.display = 'block';
+                canvas.style.opacity = 1;
+            });
+            document.getElementById('layer-mid-opacity').value = 0.85;
+            document.getElementById('midCanvas').style.opacity = 0.85;
+        }
+
+        // Initialization
+        window.addEventListener('resize', resizeCanvases);
+        resizeCanvases();
+    </script>
+</body>
+</html>
