@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro CRT Oscilloscope UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #050805;
+            color: #33ff66;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* CRT Screen Scanlines and Vignette Effect */
+        .crt-container {
+            position: relative;
+            background: radial-gradient(circle at center, #0a1f0a 0%, #020802 70%, #000200 100%);
+            border: 4px solid #1a331a;
+            box-shadow: inset 0 0 40px rgba(0, 255, 64, 0.2), 0 0 25px rgba(0, 255, 64, 0.15);
+        }
+
+        .scanlines {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.35) 50%
+            );
+            background-size: 100% 4px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .screen-glow {
+            box-shadow: 0 0 15px #33ff66, inset 0 0 15px #33ff66;
+        }
+
+        /* Custom Range Slider Styling */
+        input[type=range] {
+            accent-color: #33ff66;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between p-3 select-none">
+
+    <header class="w-full flex justify-between items-center px-4 py-2 bg-[#081408] border border-[#1a331a] rounded-lg shadow-inner text-xs sm:text-sm">
+        <div class="flex items-center space-x-2">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#33ff66] animate-pulse"></span>
+            <span class="tracking-widest font-bold">CRT-OSC v2.4</span>
+        </div>
+        <div class="tracking-widest text-[#33ff66]/70">SYS.DIAG // SP-88</div>
+        <div id="clock" class="font-mono">03:14:15</div>
+    </header>
+
+    <main class="w-full flex-grow-[2] flex flex-col items-center justify-center my-2 relative">
+        <div id="screen-wrapper" class="crt-container w-full max-w-md aspect-square rounded-full overflow-hidden flex items-center justify-center relative">
+            <!-- Phosphor Screen Glow Background -->
+            <div class="absolute inset-0 bg-[#061a06] opacity-60"></div>
+            
+            <!-- Canvas for spiral Lissajous pattern -->
+            <canvas id="oscCanvas" class="relative z-0 w-full h-full"></canvas>
+            
+            <!-- Glass reflection overlay -->
+            <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none rounded-full"></div>
+            
+            <!-- Scanlines -->
+            <div class="scanlines rounded-full"></div>
+        </div>
+    </main>
+
+    <footer class="w-full flex-grow-[1] max-w-md mx-auto bg-[#081408] border border-[#1a331a] rounded-xl p-3 flex flex-col justify-between shadow-2xl">
+        <div class="grid grid-cols-2 gap-3 text-xs">
+            <div>
+                <div class="flex justify-between text-[#33ff66]/80 mb-1">
+                    <span>FREQ (X/Y)</span>
+                    <span id="freqVal">3.0</span>
+                </div>
+                <input id="freqRange" type="range" min="1" max="10" step="0.1" value="3.0" class="w-full bg-[#030a03] h-2 rounded cursor-pointer">
+            </div>
+            <div>
+                <div class="flex justify-between text-[#33ff66]/80 mb-1">
+                    <span>MODULATION</span>
+                    <span id="modVal">5.0</span>
+                </div>
+                <input id="modRange" type="range" min="1" max="12" step="0.2" value="5.0" class="w-full bg-[#030a03] h-2 rounded cursor-pointer">
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between mt-2 pt-2 border-t border-[#1a331a]/60">
+            <div class="flex space-x-2">
+                <button id="btnHold" class="px-3 py-1 bg-[#102610] hover:bg-[#1a3b1a] border border-[#33ff66]/40 rounded text-xs tracking-wider font-bold transition">FREEZE</button>
+                <button id="btnPulse" class="px-3 py-1 bg-[#102610] hover:bg-[#1a3b1a] border border-[#33ff66]/40 rounded text-xs tracking-wider font-bold transition">PULSE</button>
+            </div>
+            <div class="text-[10px] text-[#33ff66]/60 tracking-wider">
+                SIGNAL: <span id="sigStatus" class="text-[#33ff66] font-bold">LOCKED</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Clock updater
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toTimeString().split(' ')[0];
+        }, 1000);
+
+        const canvas = document.getElementById('oscCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Control elements
+        const freqRange = document.getElementById('freqRange');
+        const freqVal = document.getElementById('freqVal');
+        const modRange = document.getElementById('modRange');
+        const modVal = document.getElementById('modVal');
+        const btnHold = document.getElementById('btnHold');
+        const btnPulse = document.getElementById('btnPulse');
+        const sigStatus = document.getElementById('sigStatus');
+
+        let isFrozen = false;
+        let isPulsing = false;
+        let pulseVal = 0;
+        let time = 0;
+
+        btnHold.addEventListener('click', () => {
+            isFrozen = !isFrozen;
+            btnHold.classList.toggle('bg-[#205220]', isFrozen);
+            sigStatus.innerText = isFrozen ? 'HOLD' : 'LOCKED';
+            sigStatus.style.color = isFrozen ? '#ffbb33' : '#33ff66';
+        });
+
+        btnPulse.addEventListener('click', () => {
+            isPulsing = !isPulsing;
+            btnPulse.classList.toggle('bg-[#205220]', isPulsing);
+        });
+
+        freqRange.addEventListener('input', (e) => {
+            freqVal.innerText = Number(e.target.value).toFixed(1);
+        });
+
+        modRange.addEventListener('input', (e) => {
+            modVal.innerText = Number(e.target.value).toFixed(1);
+        });
+
+        // Resize canvas to match display size cleanly
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawOscilloscope() {
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(centerX, centerY) * 0.82;
+
+            // Phosphor persistence decay trail
+            ctx.fillStyle = 'rgba(2, 10, 2, 0.22)';
+            ctx.fillRect(0, 0, width, height);
+
+            if (!isFrozen) {
+                time += 0.02;
+            }
+
+            if (isPulsing) {
+                pulseVal = Math.sin(time * 3) * 0.15;
+            } else {
+                pulseVal = 0;
+            }
+
+            const freq = parseFloat(freqRange.value);
+            const mod = parseFloat(modRange.value);
+
+            // Draw graticule crosshairs and concentric rings
+            ctx.strokeStyle = 'rgba(51, 255, 102, 0.15)';
+            ctx.lineWidth = 1;
+            
+            // Rings
+            for (let r = 0.25; r <= 1.0; r += 0.25) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius * r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Crosshair axes
+            ctx.beginPath();
+            ctx.moveTo(centerX - radius, centerY);
+            ctx.lineTo(centerX + radius, centerY);
+            ctx.moveTo(centerX, centerY - radius);
+            ctx.lineTo(centerX, centerY + radius);
+            ctx.stroke();
+
+            // Draw complex interference spiral wave matching reference
+            ctx.save();
+            ctx.shadowColor = '#33ff66';
+            ctx.shadowBlur = 12;
+            ctx.strokeStyle = '#66ff99';
+            ctx.lineWidth = 1.8;
+
+            const totalPoints = 900;
+            const layers = 6;
+
+            for (let l = 0; l < layers; l++) {
+                const layerOffset = (l / layers) * Math.PI * 2;
+                ctx.beginPath();
+
+                for (let i = 0; i <= totalPoints; i++) {
+                    const theta = (i / totalPoints) * Math.PI * 2;
+                    
+                    // Complex modulation to create the multi-petal spiral vortex look
+                    const spiralMod = Math.sin(theta * mod + time + layerOffset) * 0.25;
+                    const rDist = radius * (0.2 + 0.6 * Math.abs(Math.sin(theta * freq * 0.5 + time * 0.5))) * (1 + pulseVal) + spiralMod * radius;
+                    
+                    // Lissajous / spiral transform
+                    const x = centerX + Math.cos(theta + time * 0.3 + layerOffset) * rDist * (0.7 + 0.3 * Math.sin(theta * freq));
+                    const y = centerY + Math.sin(theta - time * 0.2 + layerOffset) * rDist * (0.7 + 0.3 * Math.cos(theta * freq));
+
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // Draw central dark vortex hole shadow
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 0.25);
+            gradient.addColorStop(0, 'rgba(2, 10, 2, 0.95)');
+            gradient.addColorStop(0.7, 'rgba(2, 10, 2, 0.6)');
+            gradient.addColorStop(1, 'rgba(2, 10, 2, 0.0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+
+            requestAnimationFrame(drawOscilloscope);
+        }
+
+        // Initialize animation loop on window load
+        window.onload = function () {
+            resizeCanvas();
+            drawOscilloscope();
+        };
+    </script>
+</body>
+</html>
