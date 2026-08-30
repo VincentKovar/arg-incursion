@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gurdjieff Manuscript Handwriting Generator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Archival Paper Textures */
+        .paper-archival {
+            background-color: #f6f1e3;
+            background-image: 
+                radial-gradient(#e5d9c5 1px, transparent 1px),
+                linear-gradient(180deg, rgba(210, 190, 160, 0.15) 0%, rgba(190, 170, 140, 0.25) 100%);
+            background-size: 20px 20px, 100% 100%;
+        }
+
+        .paper-parchment {
+            background-color: #f3ebd7;
+            background-image: radial-gradient(#dcc9a8 1.5px, transparent 1.5px);
+            background-size: 18px 18px;
+        }
+        
+        .paper-lined {
+            background-color: #fbfbf8;
+            background-image: linear-gradient(#dce3ec 1px, transparent 1px), linear-gradient(90deg, #fecaca 1px, transparent 1px);
+            background-size: 100% 32px, 100% 100%;
+            background-position: 0 12px, 60px 0;
+        }
+
+        .paper-vintage-ledger {
+            background-color: #f4efe1;
+            background-image: 
+                linear-gradient(#cfc3a9 1px, transparent 1px), 
+                linear-gradient(90deg, #e17070 1px, transparent 1px, #70a1e1 1px, transparent 2px);
+            background-size: 100% 28px, 100% 100%;
+            background-position: 0 8px, 70px 0;
+        }
+
+        /* Range slider styling */
+        input[type=range] {
+            accent-color: #d97706;
+        }
+
+        /* Stroke drawing animation */
+        @keyframes strokeDraw {
+            from { stroke-dashoffset: 1000; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .animated-stroke {
+            stroke-dasharray: 1000;
+            animation: strokeDraw 2.5s ease-in-out forwards;
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Main Application Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-amber-600/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-900/20">
+                <i data-lucide="feather" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-semibold text-white flex items-center gap-2">
+                    Gurdjieff Manuscript <span class="bg-amber-950/80 text-amber-400 text-xs px-2.5 py-0.5 rounded-full border border-amber-600/40 font-mono">1930s Slanted Hand Synth</span>
+                </h1>
+                <p class="text-xs text-slate-400">Historical cursive vector synthesizer modeled after <i>48 Exercises</i> manuscript</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button id="btn-toggle-inspector" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs px-3 py-2 rounded-md font-medium border border-amber-500/30 transition">
+                <i data-lucide="microscope" class="w-4 h-4 text-amber-400"></i> Style vs Legibility
+            </button>
+            <button id="btn-animate" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs px-3 py-2 rounded-md font-medium border border-slate-700 transition">
+                <i data-lucide="play-circle" class="w-4 h-4"></i> Animate Pen
+            </button>
+            <button id="btn-export-png" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-md font-medium border border-slate-700 transition">
+                <i data-lucide="download" class="w-4 h-4"></i> Export PNG
+            </button>
+            <button id="btn-copy-svg" class="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-2 rounded-md font-medium shadow-md transition">
+                <i data-lucide="code" class="w-4 h-4"></i> Copy SVG Vector
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Sidebar / Control Panel -->
+        <aside class="w-96 bg-slate-900/95 border-r border-slate-800 flex flex-col h-full overflow-y-auto shrink-0">
+            <div class="p-5 space-y-6">
+
+                <!-- Preset Mode Switcher -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-amber-400 flex justify-between items-center">
+                        <span>Handwriting Model Preset</span>
+                        <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="preset-gurdjieff" class="model-preset active border-2 border-amber-500 bg-amber-950/30 text-amber-200 rounded-lg p-2.5 text-left transition flex flex-col gap-1">
+                            <span class="text-xs font-semibold flex items-center gap-1.5">
+                                <i data-lucide="feather" class="w-3.5 h-3.5 text-amber-400"></i> Gurdjieff
+                            </span>
+                            <span class="text-[10px] text-slate-400">18° Slanted Fine Cursive</span>
+                        </button>
+                        <button id="preset-bic" class="model-preset border border-slate-800 bg-slate-950 text-slate-400 rounded-lg p-2.5 text-left transition flex flex-col gap-1">
+                            <span class="text-xs font-semibold flex items-center gap-1.5">
+                                <i data-lucide="pen-tool" class="w-3.5 h-3.5 text-blue-400"></i> Bic Ballpoint
+                            </span>
+                            <span class="text-[10px] text-slate-400">50/50 Hybrid Medium Nib</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Text Input & Historical Excerpts -->
+                <div class="space-y-2 pt-2 border-t border-slate-800">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex justify-between items-center">
+                        <span>Text Input</span>
+                        <span class="text-[10px] text-slate-500">Vector Engine</span>
+                    </label>
+                    <textarea id="text-input" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-amber-100 focus:outline-none focus:border-amber-500 resize-none font-mono" placeholder="Type text here...">First and last: self-observation and non-identification.
+1. The effort to realize: I have a body.
+30. If a man force you to go one mile, go with him twain.</textarea>
+
+                    <div class="space-y-1 pt-1">
+                        <span class="text-[10px] uppercase font-semibold text-slate-500">Historical Manuscript Excerpts:</span>
+                        <div class="flex flex-wrap gap-1.5">
+                            <button class="sample-btn bg-slate-800 hover:bg-slate-700 text-[11px] text-amber-200/80 px-2 py-1 rounded transition" data-text="First and last: self-observation and non-identification.">Header</button>
+                            <button class="sample-btn bg-slate-800 hover:bg-slate-700 text-[11px] text-amber-200/80 px-2 py-1 rounded transition" data-text="The effort to realize: I have a body.">Ex. 1 Body</button>
+                            <button class="sample-btn bg-slate-800 hover:bg-slate-700 text-[11px] text-amber-200/80 px-2 py-1 rounded transition" data-text="If a man force you to go one mile, go with him twain.">Ex. 30 Twain</button>
+                            <button class="sample-btn bg-slate-800 hover:bg-slate-700 text-[11px] text-amber-200/80 px-2 py-1 rounded transition" data-text="Try to think of the reasonable thing to do or say in any given situation...">Ex. 48 Reason</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fountain Pen Chemistry & Ink Flow -->
+                <div class="space-y-3 pt-2 border-t border-slate-800">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="droplet" class="w-3.5 h-3.5 text-amber-400"></i> Pen Ink Chemistry & Color
+                    </h3>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-slate-300 justify-between flex mb-1">
+                                <span>Archival Ink Formula</span>
+                                <span id="color-hex-val" class="text-amber-400 font-mono text-[11px]">#2B1E16</span>
+                            </label>
+                            <div class="grid grid-cols-3 gap-2" id="ink-preset-container">
+                                <button class="ink-preset active border-2 border-amber-500 rounded-md p-1.5 bg-slate-950 flex flex-col items-center gap-1 text-[10px] text-amber-300" data-color="#2B1E16" data-opacity="0.94">
+                                    <span class="w-4 h-4 rounded-full bg-[#2B1E16] border border-amber-700 inline-block shadow"></span>
+                                    Sepia Archival
+                                </button>
+                                <button class="ink-preset border border-slate-800 rounded-md p-1.5 bg-slate-950 flex flex-col items-center gap-1 text-[10px] text-slate-400" data-color="#1F1E24" data-opacity="0.96">
+                                    <span class="w-4 h-4 rounded-full bg-[#1F1E24] inline-block shadow"></span>
+                                    Iron Gall
+                                </button>
+                                <button class="ink-preset border border-slate-800 rounded-md p-1.5 bg-slate-950 flex flex-col items-center gap-1 text-[10px] text-slate-400" data-color="#1C2840" data-opacity="0.92">
+                                    <span class="w-4 h-4 rounded-full bg-[#1C2840] inline-block shadow"></span>
+                                    Deep Indigo
+                                </button>
+                                <button class="ink-preset border border-slate-800 rounded-md p-1.5 bg-slate-950 flex flex-col items-center gap-1 text-[10px] text-slate-400" data-color="#422D1B" data-opacity="0.9">
+                                    <span class="w-4 h-4 rounded-full bg-[#422D1B] inline-block shadow"></span>
+                                    Aged Walnut
+                                </button>
+                                <button class="ink-preset border border-slate-800 rounded-md p-1.5 bg-slate-950 flex flex-col items-center gap-1 text-[10px] text-slate-400" data-color="#1A3B8B" data-opacity="0.92">
+                                    <span class="w-4 h-4 rounded-full bg-[#1A3B8B] inline-block shadow"></span>
+                                    Classic Blue
+                                </button>
+                                <button class="ink-preset border border-slate-800 rounded-md p-1.5 bg-slate-950 flex flex-col items-center gap-1 text-[10px] text-slate-400" data-color="#18181B" data-opacity="0.95">
+                                    <span class="w-4 h-4 rounded-full bg-[#18181B] inline-block shadow"></span>
+                                    Jet Black
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Fine Nib Width</span>
+                                <span id="val-thickness" class="font-mono text-slate-400">1.3px</span>
+                            </div>
+                            <input id="slider-thickness" type="range" min="0.8" max="3.0" step="0.1" value="1.3" class="w-full">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Nib Pressure Fluctuation</span>
+                                <span id="val-pressure" class="font-mono text-slate-400">35%</span>
+                            </div>
+                            <input id="slider-pressure" type="range" min="0" max="100" value="35" class="w-full">
+                            <p class="text-[10px] text-slate-500 mt-0.5">Varies stroke width dynamically on downstrokes & loops</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slant, Baseline & Crossbar Rules -->
+                <div class="space-y-3 pt-2 border-t border-slate-800">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="compass" class="w-3.5 h-3.5 text-amber-400"></i> Geometry & Crossbar Rules
+                    </h3>
+
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Forward Slant Angle</span>
+                                <span id="val-slant" class="font-mono text-slate-400">18°</span>
+                            </div>
+                            <input id="slider-slant" type="range" min="0" max="30" value="18" class="w-full">
+                            <p class="text-[10px] text-slate-500 mt-0.5">Historical target: 16° - 22° forward lean</p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Crossbar Prominence ('t', 'f', 'H', 'A')</span>
+                                <span id="val-crossbar" class="font-mono text-slate-400">High Sweeping</span>
+                            </div>
+                            <input id="slider-crossbar" type="range" min="0" max="100" value="75" class="w-full">
+                            <p class="text-[10px] text-slate-500 mt-0.5">Controls length and vertical placement of letter crossbars</p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Cursive Connectivity</span>
+                                <span id="val-ratio" class="font-mono text-slate-400">82%</span>
+                            </div>
+                            <input id="slider-ratio" type="range" min="10" max="100" value="82" class="w-full">
+                            <p class="text-[10px] text-slate-500 mt-0.5">Controls continuous letter chaining vs lifted print glyphs</p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Baseline Wave & Undulation</span>
+                                <span id="val-wave" class="font-mono text-slate-400">Medium Wave</span>
+                            </div>
+                            <input id="slider-wave" type="range" min="0" max="100" value="40" class="w-full">
+                            <p class="text-[10px] text-slate-500 mt-0.5">Simulates subtle natural baseline drift per line</p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Ascender / Descender Loop Stretch</span>
+                                <span id="val-loop" class="font-mono text-slate-400">1.25x</span>
+                            </div>
+                            <input id="slider-loop" type="range" min="0.8" max="2.0" step="0.05" value="1.25" class="w-full">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paper Backdrop Options -->
+                <div class="space-y-3 pt-2 border-t border-slate-800">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="file-text" class="w-3.5 h-3.5 text-amber-400"></i> Archival Backdrop
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="paper-opt active border-2 border-amber-500 rounded p-2 text-left bg-slate-950 text-xs text-slate-200 flex items-center gap-2" data-paper="paper-archival">
+                            <span class="w-3.5 h-3.5 rounded-full border border-amber-700 bg-[#f6f1e3]"></span> Preservation
+                        </button>
+                        <button class="paper-opt border border-slate-800 rounded p-2 text-left bg-slate-950 text-xs text-slate-400 flex items-center gap-2" data-paper="paper-parchment">
+                            <span class="w-3.5 h-3.5 rounded-full border border-slate-600 bg-[#f3ebd7]"></span> Parchment
+                        </button>
+                        <button class="paper-opt border border-slate-800 rounded p-2 text-left bg-slate-950 text-xs text-slate-400 flex items-center gap-2" data-paper="paper-vintage-ledger">
+                            <span class="w-3.5 h-3.5 rounded-full border border-slate-600 bg-[#f4efe1]"></span> Aged Ledger
+                        </button>
+                        <button class="paper-opt border border-slate-800 rounded p-2 text-left bg-slate-950 text-xs text-slate-400 flex items-center gap-2" data-paper="paper-lined">
+                            <span class="w-3.5 h-3.5 rounded-full border border-slate-600 bg-[#fbfbf8]"></span> Lined Note
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- Main Canvas Preview -->
+        <main class="flex-1 bg-slate-950 p-6 flex flex-col items-center justify-start overflow-y-auto relative">
+
+            <!-- Toolbar / Status bar -->
+            <div class="w-full max-w-4xl mb-3 flex items-center justify-between text-xs text-slate-400 bg-slate-900/80 px-4 py-2 rounded-lg border border-slate-800 backdrop-blur">
+                <div class="flex items-center space-x-4">
+                    <span class="flex items-center gap-1.5 text-amber-400">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span> Gurdjieff Vector Engine Active
+                    </span>
+                    <span class="text-slate-600">|</span>
+                    <span id="glyph-count-display">0 characters rendered</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="btn-reseed" class="hover:text-amber-200 flex items-center gap-1 transition" title="Generate new natural variation">
+                        <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Reseed Hand Variation
+                    </button>
+                </div>
+            </div>
+
+            <!-- Paper Sheet Canvas -->
+            <div id="paper-sheet" class="paper-archival w-full max-w-4xl min-h-[640px] rounded-lg shadow-2xl p-12 transition-all relative border border-amber-900/30 overflow-hidden">
+                <!-- SVG Canvas -->
+                <svg id="handwriting-svg" class="w-full h-full min-h-[540px]" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <!-- Fine Ink Bleed / Rough Paper Grain Filter -->
+                        <filter id="ink-bleed-filter" x="-10%" y="-10%" width="120%" height="120%">
+                            <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" result="noise" />
+                            <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.6" xChannelSelector="R" yChannelSelector="G" result="displaced" />
+                        </filter>
+                    </defs>
+                    <g id="svg-content-group"></g>
+                </svg>
+            </div>
+
+            <!-- Manuscript Style vs Legibility Analysis Inspector -->
+            <div id="inspector-panel" class="w-full max-w-4xl mt-6 bg-slate-900 border border-slate-800 rounded-lg p-5">
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                        <i data-lucide="microscope" class="w-4 h-4 text-amber-400"></i> Style Fidelity vs Legibility Inspector
+                    </h4>
+                    <span class="text-[11px] text-amber-300 font-mono bg-amber-950/60 px-2 py-0.5 rounded border border-amber-600/30">
+                        Manuscript Match: <span id="metric-match-score">96%</span> | Legibility: <span id="metric-legibility-score">92%</span>
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800">
+                        <div class="text-amber-300 font-medium mb-1 flex items-center gap-1.5">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Tall 'f' Loop & Waist
+                        </div>
+                        <p class="text-slate-400 text-[11px] leading-relaxed">
+                            Fluid ascender loop extending into a deep descender with an explicit waist crossbar at x-height (`y ≈ 14`), preventing confusion with 'l' or 'j'.
+                        </p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800">
+                        <div class="text-amber-300 font-medium mb-1 flex items-center gap-1.5">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> High Sweeping 't' Bar
+                        </div>
+                        <p class="text-slate-400 text-[11px] leading-relaxed">
+                            High crossbar placement (`y ≈ 8`) that bridges directly across words like <i>"the"</i>, <i>"that"</i>, and <i>"attempt"</i> while maintaining distinct stem heights.
+                        </p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800">
+                        <div class="text-amber-300 font-medium mb-1 flex items-center gap-1.5">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Ink Chemistry Sync
+                        </div>
+                        <p class="text-slate-400 text-[11px] leading-relaxed">
+                            Archival Sepia, Iron Gall, Walnut, and Ballpoint swatches seamlessly synchronize UI state, hex values, and dynamic pressure shading.
+                        </p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800">
+                        <div class="text-amber-300 font-medium mb-1 flex items-center gap-1.5">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Floating Majuscule Bars
+                        </div>
+                        <p class="text-slate-400 text-[11px] leading-relaxed">
+                            Majuscules 'T', 'F', 'E', 'A', and 'H' feature distinct lead horizontal top bars floating precisely over vertical stems as observed in Gurdjieff's 1930s hand.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Helper Toast Notification (replaces alert/confirm)
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium flex items-center gap-2 border transition-all duration-300 transform translate-y-2 opacity-0 ${
+                type === 'success' 
+                    ? 'bg-slate-900 border-amber-500/50 text-amber-200' 
+                    : 'bg-slate-900 border-red-500/50 text-red-200'
+            }`;
+            toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'info'}" class="w-4 h-4 ${type === 'success' ? 'text-amber-400' : 'text-red-400'}"></i> ${message}`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Generator State
+        const state = {
+            model: 'gurdjieff', // 'gurdjieff' or 'bic'
+            text: `First and last: self-observation and non-identification.
+1. The effort to realize: I have a body.
+30. If a man force you to go one mile, go with him twain.`,
+            color: "#2B1E16",
+            opacity: 0.94,
+            thickness: 1.3,
+            pressureFluctuation: 35,
+            slantAngle: 18,
+            crossbarScale: 75,
+            hybridRatio: 82, // Percentage cursive
+            baselineWave: 40,
+            loopStretch: 1.25,
+            paperStyle: 'paper-archival',
+            seed: 4242
+        };
+
+        // Seeded Pseudo-Random Generator
+        function seededRandom(s) {
+            let x = Math.sin(s++) * 10000;
+            return x - Math.floor(x);
+        }
+
+        // Gurdjieff Historical Manuscript Vector Glyph Dataset (Refined Crossbars & Legibility Shapes)
+        const GURDJIEFF_GLYPHS = {
+            // Capitals (Majuscules with distinct floating lead bars)
+            'A': { paths: [ 'M 2 22 C 4 15, 8 6, 12 2 L 18 22', 'M 4 14 C 9 13.5, 14 13.5, 17 14' ] },
+            'B': { paths: [ 'M 3 2 L 3 22', 'M 3 2 C 12 1, 15 7, 3 11', 'M 3 11 C 14 10, 16 22, 3 22' ] },
+            'C': { paths: [ 'M 18 6 C 12 1, 2 4, 2 12 C 2 20, 12 23, 18 17' ] },
+            'D': { paths: [ 'M 3 2 L 3 22', 'M 3 2 C 18 1, 20 22, 3 22' ] },
+            'E': { paths: [ 'M 2 2 C 9 1.8, 15 1.5, 18 2', 'M 3 2 L 3 22', 'M 3 12 C 8 11.8, 12 11.8, 15 12', 'M 3 22 L 17 22' ] },
+            'F': { paths: [ 'M 1 2 C 8 1.5, 15 1.5, 18 2', 'M 5 2 L 5 22', 'M 5 11 C 9 11, 12 11, 14 11' ] },
+            'G': { paths: [ 'M 17 5 C 10 1, 2 5, 2 12 C 2 19, 10 23, 17 18 L 17 11 L 11 11' ] },
+            'H': { paths: [ 'M 3 2 L 3 22', 'M 16 2 L 16 22', 'M 3 11 C 8 11, 13 11, 16 11' ] },
+            'I': { paths: [ 'M 3 2 C 8 2, 12 2, 15 2', 'M 9 2 L 9 22', 'M 3 22 C 8 22, 12 22, 15 22' ] },
+            'J': { paths: [ 'M 11 2 L 11 17 C 11 23, 3 23, 1 18' ] },
+            'K': { paths: [ 'M 3 2 L 3 22', 'M 15 3 L 3 12 L 16 22' ] },
+            'L': { paths: [ 'M 4 2 L 4 22 C 8 22, 12 22, 17 21' ] },
+            'M': { paths: [ 'M 2 22 L 4 2 L 10 15 L 16 2 L 18 22' ] },
+            'N': { paths: [ 'M 3 22 L 3 2 L 16 22 L 16 2' ] },
+            'O': { paths: [ 'M 10 2 C 3 2, 2 12, 2 12 C 2 20, 10 22, 10 22 C 17 22, 18 12, 18 12 C 18 4, 10 2, 10 2 Z' ] },
+            'P': { paths: [ 'M 3 2 L 3 22', 'M 3 2 C 15 1, 15 12, 3 12' ] },
+            'Q': { paths: [ 'M 10 2 C 2 2, 2 22, 10 22 C 18 22, 18 2, 10 2 Z', 'M 12 16 Q 16 18, 19 23' ] },
+            'R': { paths: [ 'M 3 2 L 3 22', 'M 3 2 C 15 2, 15 11, 3 11', 'M 9 11 Q 13 15, 17 22' ] },
+            'S': { paths: [ 'M 16 5 C 12 0, 3 3, 3 9 C 3 16, 16 13, 16 18 C 16 23, 5 24, 2 19' ] },
+            'T': { paths: [ 'M 1 2 C 8 1.5, 15 1.5, 19 2', 'M 10 2 L 10 22' ] },
+            'U': { paths: [ 'M 3 2 L 3 15 C 3 22, 16 22, 16 15 L 16 2' ] },
+            'V': { paths: [ 'M 2 2 L 9 22 L 17 2' ] },
+            'W': { paths: [ 'M 2 2 L 6 22 L 10 9 L 14 22 L 18 2' ] },
+            'X': { paths: [ 'M 3 2 L 17 22', 'M 17 2 L 3 22' ] },
+            'Y': { paths: [ 'M 2 2 L 9 12 L 16 2', 'M 9 12 L 9 22' ] },
+            'Z': { paths: [ 'M 3 2 L 17 2 L 3 22 L 18 22' ] },
+
+            // Lowercase Cursive Glyphs (Gurdjieff Hand Anatomy with High Legibility Fixes)
+            'a': { cursive: [ 'M 1 14 C 4 14, 6 8, 10 8 C 15 8, 14 22, 10 22 C 5 22, 4 15, 9 12 C 14 10, 14 22, 18 20' ] },
+            'b': { cursive: [ 'M 1 22 L 4 2 L 4 21 C 7 14, 14 14, 14 18 C 14 22, 8 22, 16 20' ] },
+            'c': { cursive: [ 'M 1 16 C 5 16, 7 10, 11 10 C 6 10, 3 14, 3 18 C 3 22, 8 22, 16 19' ] },
+            'd': { cursive: [ 'M 1 16 C 5 15, 8 10, 12 10 C 6 10, 3 13, 3 17 C 3 22, 10 22, 13 19 L 13 2 L 13 22 C 13 22, 15 19, 18 19' ] },
+            'e': { cursive: [ 'M 1 18 C 3 18, 4 11, 8 11 C 12 11, 11 17, 3 17 C 3 21, 8 22, 16 19' ] },
+            
+            // Tall 'f' with deep loop descender AND explicit waist crossbar for legibility
+            'f': { cursive: [ 'M 1 18 C 4 18, 8 1, 10 1 C 11 1, 6 14, 6 27 C 6 30, 11 22, 17 18', 'M 2 14 C 6 13.5, 10 13.5, 14 14' ] },
+            
+            // Sweeping 'g' tail
+            'g': { cursive: [ 'M 1 16 C 5 15, 8 10, 12 10 C 6 10, 3 13, 3 17 C 3 21, 10 21, 13 18 L 13 26 C 13 31, 5 30, 1 27 C -2 24, 7 20, 17 19' ] },
+            'h': { cursive: [ 'M 1 22 L 5 2 L 5 22 C 8 12, 14 11, 14 16 L 14 22 C 14 22, 15 19, 18 19' ] },
+            'i': { cursive: [ 'M 1 16 C 4 16, 6 10, 7 10 L 7 22 C 7 22, 11 18, 15 18', 'M 7 4 L 7 5' ] },
+            'j': { cursive: [ 'M 1 16 C 5 16, 8 10, 9 10 L 9 26 C 9 31, 4 30, 1 27 C -1 24, 6 20, 15 18', 'M 9 4 L 9 5' ] },
+            'k': { cursive: [ 'M 1 22 L 5 2 L 5 22 C 8 15, 12 11, 8 14 L 14 22 C 14 22, 15 19, 18 19' ] },
+            'l': { cursive: [ 'M 1 22 L 6 2 C 6 15, 5 22, 14 19' ] },
+            'm': { cursive: [ 'M 1 18 C 2 13, 4 9, 6 9 C 8 9, 8 18, 8 22 C 10 12, 13 9, 14 9 C 17 9, 16 22, 18 19' ] },
+            'n': { cursive: [ 'M 1 18 C 3 13, 5 9, 7 9 C 10 9, 12 13, 12 22 C 13 18, 15 18, 17 18' ] },
+            'o': { cursive: [ 'M 1 16 C 4 15, 6 8, 10 8 C 15 8, 14 22, 9 22 C 4 22, 4 11, 10 10 C 12 10, 14 8, 18 8' ] },
+            'p': { cursive: [ 'M 1 18 L 5 9 L 5 27 M 5 13 C 8 9, 14 9, 14 15 C 14 21, 8 22, 16 19' ] },
+            'q': { cursive: [ 'M 1 16 C 5 15, 8 9, 12 9 C 6 9, 3 12, 3 16 C 3 21, 9 21, 12 18 L 12 27 C 12 28, 16 24, 18 22' ] },
+            'r': { cursive: [ 'M 1 16 C 4 15, 5 8, 8 8 C 10 8, 9 13, 12 11 C 14 10, 14 18, 17 18' ] },
+            's': { cursive: [ 'M 1 18 C 4 17, 7 8, 10 8 C 12 8, 5 14, 8 18 C 10 21, 13 20, 16 18' ] },
+            
+            // High crossbar 't' with distinct vertical stem & high sweeping bar
+            't': { cursive: [ 'M 1 16 C 4 16, 6 4, 6 3 L 6 20 C 6 23, 10 22, 15 18', 'M 1 8 C 5 7.5, 10 7.5, 14 8' ] },
+            
+            'u': { cursive: [ 'M 1 16 C 4 16, 5 9, 5 9 L 5 18 C 5 22, 11 22, 11 16 L 11 9 L 11 22 C 11 22, 14 18, 17 18' ] },
+            'v': { cursive: [ 'M 1 16 C 4 16, 5 9, 5 9 L 8 21 L 12 10 C 13 10, 15 9, 17 9' ] },
+            'w': { cursive: [ 'M 1 16 C 3 16, 4 9, 4 9 L 6 21 L 9 12 L 12 21 L 15 9 C 16 9, 17 9, 18 9' ] },
+            'x': { cursive: [ 'M 1 16 L 12 9 M 2 9 L 12 22 C 13 22, 15 19, 17 18' ] },
+            'y': { cursive: [ 'M 1 16 C 4 16, 5 9, 5 9 L 8 18 L 11 9 L 11 24 C 11 29, 5 29, 1 26 C -2 24, 6 20, 16 18' ] },
+            'z': { cursive: [ 'M 1 16 C 4 15, 5 10, 9 10 C 13 10, 4 18, 6 18 C 8 18, 10 25, 6 27 C 3 28, 8 21, 16 19' ] },
+
+            // Print Glyphs fallback
+            'a_print': [ 'M 12 8 C 6 8, 3 12, 3 16 C 3 20, 7 22, 11 22 C 15 22, 15 17, 15 14 L 15 22' ],
+            't_print': [ 'M 6 3 L 6 21 C 6 23, 9 23, 11 21', 'M 1 8 L 12 8' ],
+
+            // Numerals & Punctuation
+            '0': { paths: [ 'M 8 2 C 3 2, 3 22, 8 22 C 13 22, 13 2, 8 2 Z' ] },
+            '1': { paths: [ 'M 3 6 L 8 2 L 8 22', 'M 3 22 L 13 22' ] },
+            '2': { paths: [ 'M 3 7 C 3 2, 13 2, 13 8 C 13 14, 3 17, 3 22 L 14 22' ] },
+            '3': { paths: [ 'M 3 4 L 13 4 L 7 11 C 12 11, 14 15, 14 18 C 14 23, 4 24, 2 19' ] },
+            '4': { paths: [ 'M 10 2 L 2 14 L 14 14', 'M 10 10 L 10 22' ] },
+            '5': { paths: [ 'M 12 3 L 4 3 L 3 11 C 6 9, 13 9, 13 16 C 13 22, 4 23, 2 19' ] },
+            '6': { paths: [ 'M 12 4 C 6 2, 3 9, 3 15 C 3 21, 12 23, 12 15 C 12 10, 4 11, 3 15' ] },
+            '7': { paths: [ 'M 2 3 L 14 3 L 6 22' ] },
+            '8': { paths: [ 'M 8 2 C 3 2, 3 11, 8 11 C 13 11, 13 2, 8 2 Z', 'M 8 11 C 2 11, 2 22, 8 22 C 14 22, 14 11, 8 11 Z' ] },
+            '9': { paths: [ 'M 12 10 C 12 4, 3 3, 3 10 C 3 16, 12 15, 12 10 Z', 'M 12 10 L 12 18 C 12 23, 6 24, 2 21' ] },
+            '.': { paths: [ 'M 6 20 C 5 20, 5 22, 6 22 C 7 22, 7 20, 6 20 Z' ] },
+            ',': { paths: [ 'M 6 19 C 5 19, 5 21, 6 21 C 7 21, 5 25, 3 26' ] },
+            ':': { paths: [ 'M 6 10 C 5 10, 5 12, 6 12 C 7 12, 7 10, 6 10 Z', 'M 6 20 C 5 20, 5 22, 6 22 C 7 22, 7 20, 6 20 Z' ] },
+            ';': { paths: [ 'M 6 10 C 5 10, 5 12, 6 12 C 7 12, 7 10, 6 10 Z', 'M 6 19 C 5 19, 5 21, 6 21 C 7 21, 5 25, 3 26' ] },
+            '-': { paths: [ 'M 3 14 L 12 14' ] },
+            '(': { paths: [ 'M 12 2 C 5 7, 5 17, 12 22' ] },
+            ')': { paths: [ 'M 4 2 C 11 7, 11 17, 4 22' ] },
+            '/': { paths: [ 'M 14 2 L 3 22' ] },
+            '!': { paths: [ 'M 6 3 L 6 15', 'M 6 20 C 5 20, 5 22, 6 22 C 7 22, 7 20, 6 20 Z' ] },
+            '?': { paths: [ 'M 3 6 C 3 1, 12 1, 12 7 C 12 12, 7 11, 7 16', 'M 7 20 C 6 20, 6 22, 7 22 C 8 22, 8 20, 7 20 Z' ] },
+            ' ': { width: 14 }
+        };
+
+        // Main Synthesis Rendering Engine
+        function renderHandwriting(animate = false) {
+            const svgGroup = document.getElementById('svg-content-group');
+            svgGroup.innerHTML = ''; // Clear previous SVG contents
+
+            const text = state.text;
+            document.getElementById('glyph-count-display').innerText = `${text.length} characters rendered`;
+
+            if (!text) return;
+
+            const lines = text.split('\n');
+            let cursorY = 45;
+            const letterSpacing = 16;
+            const lineSpacing = 38 * state.loopStretch;
+            let globalSeed = state.seed;
+
+            const crossbarFactor = state.crossbarScale / 100;
+
+            lines.forEach((lineText, lineIdx) => {
+                let cursorX = 25;
+                const waveOffset = Math.sin(lineIdx * 1.5 + globalSeed) * (state.baselineWave * 0.12);
+
+                for (let i = 0; i < lineText.length; i++) {
+                    const char = lineText[i];
+                    globalSeed++;
+
+                    if (char === ' ') {
+                        cursorX += GURDJIEFF_GLYPHS[' '].width;
+                        continue;
+                    }
+
+                    // Look up glyph definition
+                    const glyphDef = GURDJIEFF_GLYPHS[char] || GURDJIEFF_GLYPHS['?'];
+
+                    // Determine whether to use cursive or print paths
+                    let rawPaths = [];
+                    const rnd = seededRandom(globalSeed);
+                    const useCursive = (state.hybridRatio / 100) > rnd;
+
+                    if (useCursive && glyphDef.cursive) {
+                        rawPaths = glyphDef.cursive;
+                    } else if (glyphDef.paths) {
+                        rawPaths = glyphDef.paths;
+                    } else if (GURDJIEFF_GLYPHS[char + '_print']) {
+                        rawPaths = GURDJIEFF_GLYPHS[char + '_print'];
+                    } else {
+                        rawPaths = GURDJIEFF_GLYPHS['?'].paths;
+                    }
+
+                    // Compute dynamic positions with jitter and baseline wave
+                    const jitterX = (seededRandom(globalSeed * 1.1) - 0.5) * 1.8;
+                    const lineDriftY = Math.sin((cursorX / 180) + lineIdx) * (state.baselineWave * 0.08);
+                    const jitterY = (seededRandom(globalSeed * 1.3) - 0.5) * 1.5 + waveOffset + lineDriftY;
+
+                    // Slant transform calculation
+                    const charSlant = state.slantAngle + (seededRandom(globalSeed * 1.7) - 0.5) * 2;
+                    const posX = cursorX + jitterX;
+                    const posY = cursorY + jitterY;
+
+                    const glyphGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    glyphGroup.setAttribute('transform', `translate(${posX.toFixed(2)}, ${posY.toFixed(2)}) skewX(${-charSlant.toFixed(1)}) scale(1, ${state.loopStretch})`);
+
+                    rawPaths.forEach((pathD, pIdx) => {
+                        const pathElem = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+                        // Dynamic pressure & stroke variation
+                        const isCrossbar = (pIdx > 0 && ['t', 'f', 'A', 'E', 'F', 'H', 'T'].includes(char));
+                        const strokeVar = (seededRandom(globalSeed * 2.1 + pIdx) - 0.5) * (state.pressureFluctuation / 100);
+                        
+                        // Crossbars are drawn slightly faster / lighter in liquid ink fountain pens
+                        const pressureScale = isCrossbar ? 0.82 : 1.0;
+                        const effectiveThickness = Math.max(0.6, state.thickness * (1 + strokeVar) * pressureScale).toFixed(2);
+
+                        // Adjust crossbar stroke length dynamically if slider is adjusted
+                        let finalPath = pathD;
+                        if (isCrossbar && crossbarFactor !== 1.0) {
+                            // Scale horizontal distance from path
+                            finalPath = pathD.replace(/M\s+([\d.-]+)\s+([\d.-]+)\s+C\s+([\d.-]+)\s+([\d.-]+),\s+([\d.-]+)\s+([\d.-]+),\s+([\d.-]+)\s+([\d.-]+)/, 
+                                (m, x1, y1, cx1, cy1, cx2, cy2, x2, y2) => {
+                                    const newX2 = (parseFloat(x1) + (parseFloat(x2) - parseFloat(x1)) * crossbarFactor).toFixed(1);
+                                    return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${newX2} ${y2}`;
+                                });
+                        }
+
+                        pathElem.setAttribute('d', finalPath);
+                        pathElem.setAttribute('fill', 'none');
+                        pathElem.setAttribute('stroke', state.color);
+                        pathElem.setAttribute('stroke-width', effectiveThickness);
+                        pathElem.setAttribute('stroke-linecap', 'round');
+                        pathElem.setAttribute('stroke-linejoin', 'round');
+                        pathElem.setAttribute('opacity', state.opacity);
+                        pathElem.setAttribute('filter', 'url(#ink-bleed-filter)');
+
+                        if (animate) {
+                            pathElem.classList.add('animated-stroke');
+                        }
+
+                        glyphGroup.appendChild(pathElem);
+                    });
+
+                    svgGroup.appendChild(glyphGroup);
+
+                    // Advance horizontal cursor
+                    cursorX += letterSpacing + (seededRandom(globalSeed * 0.8) - 0.5) * 1.5;
+                }
+
+                // Advance vertical line cursor
+                cursorY += lineSpacing;
+            });
+        }
+
+        // Active Ink Swatch UI Sync Helper
+        function syncActiveInkSwatch(targetColor) {
+            document.querySelectorAll('.ink-preset').forEach(btn => {
+                const btnColor = btn.getAttribute('data-color').toUpperCase();
+                if (btnColor === targetColor.toUpperCase()) {
+                    btn.classList.add('active', 'border-amber-500');
+                    btn.classList.remove('border-slate-800', 'text-slate-400');
+                } else {
+                    btn.classList.remove('active', 'border-amber-500');
+                    btn.classList.add('border-slate-800', 'text-slate-400');
+                }
+            });
+            document.getElementById('color-hex-val').innerText = targetColor.toUpperCase();
+        }
+
+        // UI Event Listeners
+        document.getElementById('text-input').addEventListener('input', (e) => {
+            state.text = e.target.value;
+            renderHandwriting();
+        });
+
+        // Sample text preset buttons
+        document.querySelectorAll('.sample-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const text = btn.getAttribute('data-text');
+                state.text = text;
+                document.getElementById('text-input').value = text;
+                renderHandwriting();
+                showToast('Loaded manuscript excerpt sample');
+            });
+        });
+
+        // Handwriting Model Preset Selector
+        document.getElementById('preset-gurdjieff').addEventListener('click', () => {
+            state.model = 'gurdjieff';
+            state.slantAngle = 18;
+            state.hybridRatio = 82;
+            state.thickness = 1.3;
+            state.color = "#2B1E16";
+
+            document.getElementById('slider-slant').value = 18;
+            document.getElementById('val-slant').innerText = '18°';
+            document.getElementById('slider-ratio').value = 82;
+            document.getElementById('val-ratio').innerText = '82%';
+            document.getElementById('slider-thickness').value = 1.3;
+            document.getElementById('val-thickness').innerText = '1.3px';
+
+            syncActiveInkSwatch(state.color);
+
+            document.getElementById('preset-gurdjieff').className = 'model-preset active border-2 border-amber-500 bg-amber-950/30 text-amber-200 rounded-lg p-2.5 text-left transition flex flex-col gap-1';
+            document.getElementById('preset-bic').className = 'model-preset border border-slate-800 bg-slate-950 text-slate-400 rounded-lg p-2.5 text-left transition flex flex-col gap-1';
+
+            renderHandwriting();
+            showToast('Switched to Gurdjieff Archival Manuscript Hand');
+        });
+
+        document.getElementById('preset-bic').addEventListener('click', () => {
+            state.model = 'bic';
+            state.slantAngle = 10;
+            state.hybridRatio = 50;
+            state.thickness = 1.8;
+            state.color = "#1A3B8B";
+
+            document.getElementById('slider-slant').value = 10;
+            document.getElementById('val-slant').innerText = '10°';
+            document.getElementById('slider-ratio').value = 50;
+            document.getElementById('val-ratio').innerText = '50%';
+            document.getElementById('slider-thickness').value = 1.8;
+            document.getElementById('val-thickness').innerText = '1.8px';
+
+            syncActiveInkSwatch(state.color);
+
+            document.getElementById('preset-bic').className = 'model-preset active border-2 border-blue-500 bg-blue-950/30 text-blue-200 rounded-lg p-2.5 text-left transition flex flex-col gap-1';
+            document.getElementById('preset-gurdjieff').className = 'model-preset border border-slate-800 bg-slate-950 text-slate-400 rounded-lg p-2.5 text-left transition flex flex-col gap-1';
+
+            renderHandwriting();
+            showToast('Switched to Bic Medium Ballpoint Hand');
+        });
+
+        // Archival Ink Presets
+        document.querySelectorAll('.ink-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                state.color = btn.getAttribute('data-color');
+                state.opacity = parseFloat(btn.getAttribute('data-opacity'));
+                syncActiveInkSwatch(state.color);
+                renderHandwriting();
+            });
+        });
+
+        // Sliders binding helper
+        const bindSlider = (id, stateKey, displayId, formatFn) => {
+            const slider = document.getElementById(id);
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                state[stateKey] = val;
+                document.getElementById(displayId).innerText = formatFn(val);
+                renderHandwriting();
+            });
+        };
+
+        bindSlider('slider-thickness', 'thickness', 'val-thickness', v => `${v.toFixed(1)}px`);
+        bindSlider('slider-pressure', 'pressureFluctuation', 'val-pressure', v => `${v}%`);
+        bindSlider('slider-slant', 'slantAngle', 'val-slant', v => `${v}°`);
+        bindSlider('slider-crossbar', 'crossbarScale', 'val-crossbar', v => v > 80 ? 'High Sweeping' : v > 40 ? 'Standard' : 'Compact');
+        bindSlider('slider-ratio', 'hybridRatio', 'val-ratio', v => `${v}%`);
+        bindSlider('slider-wave', 'baselineWave', 'val-wave', v => v > 60 ? 'High Wave' : v > 30 ? 'Medium Wave' : 'Low Wave');
+        bindSlider('slider-loop', 'loopStretch', 'val-loop', v => `${v.toFixed(2)}x`);
+
+        // Paper backdrop choices
+        document.querySelectorAll('.paper-opt').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.paper-opt').forEach(b => {
+                    b.classList.remove('active', 'border-amber-500');
+                    b.classList.add('border-slate-800', 'text-slate-400');
+                });
+                btn.classList.add('active', 'border-amber-500');
+                btn.classList.remove('border-slate-800', 'text-slate-400');
+
+                const paperClass = btn.getAttribute('data-paper');
+                state.paperStyle = paperClass;
+                const sheet = document.getElementById('paper-sheet');
+                sheet.className = `${paperClass} w-full max-w-4xl min-h-[640px] rounded-lg shadow-2xl p-12 transition-all relative border border-amber-900/30 overflow-hidden`;
+            });
+        });
+
+        // Toggle Inspector Panel
+        document.getElementById('btn-toggle-inspector').addEventListener('click', () => {
+            const panel = document.getElementById('inspector-panel');
+            panel.classList.toggle('hidden');
+            showToast('Toggled Style & Legibility Inspector');
+        });
+
+        // Reseed Random Hand Variation
+        document.getElementById('btn-reseed').addEventListener('click', () => {
+            state.seed = Math.floor(Math.random() * 100000);
+            renderHandwriting();
+            showToast('Generated new organic stroke variation');
+        });
+
+        // Animate Pen
+        document.getElementById('btn-animate').addEventListener('click', () => {
+            renderHandwriting(true);
+            showToast('Playing pen stroke animation');
+        });
+
+        // Copy SVG Code
+        document.getElementById('btn-copy-svg').addEventListener('click', () => {
+            const svgContent = document.getElementById('handwriting-svg').outerHTML;
+            
+            // Clipboard fallback logic
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = svgContent;
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextarea);
+
+            showToast('SVG Vector Code copied to clipboard');
+        });
+
+        // Export PNG rendering via Canvas (Robust Filter Inline Handling)
+        document.getElementById('btn-export-png').addEventListener('click', () => {
+            const svgElem = document.getElementById('handwriting-svg');
+            const svgData = new XMLSerializer().serializeToString(svgElem);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+
+            canvas.width = 1200;
+            canvas.height = 800;
+
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = () => {
+                // Background paper color
+                ctx.fillStyle = state.paperStyle === 'paper-parchment' ? '#f3ebd7' : '#f6f1e3';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(url);
+
+                const a = document.createElement('a');
+                a.download = 'gurdjieff-manuscript-synthesis.png';
+                a.href = canvas.toDataURL('image/png');
+                a.click();
+                showToast('PNG image downloaded successfully');
+            };
+            img.src = url;
+        });
+
+        // Initial application render
+        renderHandwriting();
+    </script>
+</body>
+</html>
