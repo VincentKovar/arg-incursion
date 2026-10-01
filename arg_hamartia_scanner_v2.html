@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>S.P.E.C.T.R.E. — Hamartia Scanner</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --teal: #00ffcc;
+  --teal-dim: rgba(0, 255, 204, .3);
+  --amber: #ffb454;
+  --rose: #ff7a9a;
+  --ink: #050811;
+  --glass: rgba(8, 22, 20, .72);
+  --text: #cfeee6;
+  --muted: #8aa8a0;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; height: 100%; background: #000; color: var(--teal);
+  font-family: 'Share Tech Mono', ui-monospace, Menlo, monospace; font-size: 14px;
+  overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none;
+}
+.hud-font { font-family: 'Orbitron', system-ui, sans-serif; }
+.hidden { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+/* ---------- stage ---------- */
+#stage, #stage > * { position: absolute; inset: 0; width: 100%; height: 100%; }
+#video { object-fit: cover; }
+#fx { pointer-events: none; }
+#stage { transition: filter .35s; }
+body[data-lens="1"] #stage { filter: brightness(1.5) sepia(1) hue-rotate(95deg) saturate(2.2); }
+body[data-lens="2"] #stage { filter: grayscale(.65) contrast(1.15) hue-rotate(190deg) brightness(1.15); }
+.layer { position: absolute; inset: 0; pointer-events: none; }
+.scan {
+  background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,.28) 50%), linear-gradient(90deg, rgba(255,0,0,.03), rgba(0,255,0,.01), rgba(0,0,255,.03));
+  background-size: 100% 4px, 6px 100%;
+}
+.vig { box-shadow: inset 0 0 90px rgba(0,0,0,.7); }
+#flash { background: #fff; opacity: 0; transition: opacity .35s ease-out; z-index: 60; }
+#pingring {
+  position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px;
+  border: 2px solid var(--teal); border-radius: 50%; opacity: 0; pointer-events: none; z-index: 12;
+}
+#pingring.go { animation: ping 1.4s ease-out; }
+@keyframes ping { from { transform: scale(1); opacity: .9; } to { transform: scale(26); opacity: 0; } }
+
+/* ---------- glass + HUD ---------- */
+.glass {
+  background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--teal-dim); box-shadow: 0 0 14px rgba(0,255,204,.12);
+}
+#hud {
+  position: absolute; z-index: 20; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; pointer-events: none;
+}
+.hud-card { padding: 10px 12px; border-radius: 12px; border-left: 4px solid var(--teal); width: min(250px, 62vw); pointer-events: auto; }
+.brand { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 12px; letter-spacing: .12em; display: flex; align-items: center; gap: 8px; }
+.brand small { color: var(--amber); font-size: 10px; letter-spacing: .2em; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); animation: blink 1.6s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.status { margin: 7px 0 8px; font-size: 12px; color: var(--text); min-height: 2.6em; line-height: 1.3; }
+.meter { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--muted); letter-spacing: .1em; }
+.bar { flex: 1; height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4aa3ff, var(--teal), var(--amber)); transition: width .15s; }
+.links { display: flex; gap: 14px; margin-top: 8px; }
+.link { background: none; border: 0; padding: 4px 0; font-size: 11px; letter-spacing: .08em; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.link:hover { color: var(--teal); }
+#radar { width: 96px; height: 96px; border-radius: 50%; pointer-events: none; flex: none; }
+
+/* ---------- reticle + pointer ---------- */
+#reticle { position: absolute; z-index: 10; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; pointer-events: none; }
+#reticle svg { width: 100%; height: 100%; }
+#ring { stroke: var(--teal); stroke-width: 3; fill: none; stroke-linecap: round; stroke-dasharray: 339.3; stroke-dashoffset: 339.3; filter: drop-shadow(0 0 4px var(--teal)); }
+#ring-bg { stroke: var(--teal-dim); stroke-width: 1; fill: none; }
+.br { position: absolute; width: 14px; height: 14px; border: 0 solid var(--teal); opacity: .85; }
+.br.tl { top: 0; left: 0; border-top-width: 2px; border-left-width: 2px; }
+.br.tr { top: 0; right: 0; border-top-width: 2px; border-right-width: 2px; }
+.br.bl { bottom: 0; left: 0; border-bottom-width: 2px; border-left-width: 2px; }
+.br.brr { bottom: 0; right: 0; border-bottom-width: 2px; border-right-width: 2px; }
+#reticle-text {
+  position: absolute; top: 128px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+  font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: .2em; color: var(--teal); text-shadow: 0 0 8px var(--teal);
+}
+#pointer { position: absolute; z-index: 11; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; opacity: 0; transition: opacity .2s; }
+#pointer svg {
+  position: absolute; width: 46px; height: 46px; left: -23px; top: -23px; color: var(--amber);
+  filter: drop-shadow(0 0 8px rgba(255,180,84,.9)); animation: nudge 1s ease-in-out infinite alternate;
+}
+@keyframes nudge { from { opacity: .45; } to { opacity: 1; } }
+#hint {
+  position: absolute; z-index: 15; left: 50%; bottom: calc(max(24px, env(safe-area-inset-bottom)) + 104px); transform: translateX(-50%);
+  width: min(86vw, 380px); text-align: center; font-size: 12px; line-height: 1.4; color: var(--text); padding: 8px 12px; border-radius: 10px;
+  transition: opacity .6s; pointer-events: none;
+}
+
+/* ---------- bottom controls ---------- */
+#bar {
+  position: absolute; z-index: 20; left: 0; right: 0; bottom: max(22px, env(safe-area-inset-bottom));
+  padding: 0 22px; display: flex; align-items: center; justify-content: space-between;
+}
+.round {
+  position: relative; width: 62px; height: 62px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--teal); transition: transform .1s, background .2s;
+}
+.round svg, .tiny svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.round:active { transform: scale(.92); }
+.round.amber { color: var(--amber); }
+.round .cd { position: absolute; inset: 0; border-radius: 50%; background: rgba(0,0,0,.72); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+#btn-shutter {
+  width: 80px; height: 80px; border-radius: 50%; border: 0; padding: 5px; background: linear-gradient(135deg, #2fe9c3, #0f8f80);
+  box-shadow: 0 0 26px rgba(0,255,204,.55); transition: transform .1s;
+}
+#btn-shutter:active { transform: scale(.92); }
+#btn-shutter .in { width: 100%; height: 100%; border-radius: 50%; border: 2px solid rgba(0,0,0,.4); background: #18c9a8; display: flex; align-items: center; justify-content: center; color: #03120f; }
+#btn-shutter svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+#btn-logs {
+  position: absolute; z-index: 20; right: 12px; top: calc(max(12px, env(safe-area-inset-top)) + 112px);
+  padding: 8px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; letter-spacing: .06em; display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+#btn-logs svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+
+/* ---------- toast ---------- */
+#toast {
+  position: absolute; z-index: 55; top: calc(max(12px, env(safe-area-inset-top)) + 150px); left: 50%; transform: translate(-50%, -10px);
+  max-width: 86vw; padding: 9px 16px; border-radius: 999px; font-size: 12px; text-align: center; color: var(--text);
+  opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none;
+}
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- overlays ---------- */
+.overlay { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(3, 6, 12, .9); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.card { width: 100%; max-width: 400px; max-height: 100%; overflow-y: auto; border-radius: 18px; padding: 22px 20px; text-align: center; }
+.card h1, .card h2 { font-family: 'Orbitron', sans-serif; letter-spacing: .08em; margin: 0; }
+.card h1 { font-size: 19px; font-weight: 900; }
+.card p { color: var(--text); line-height: 1.5; font-size: 13px; margin: 10px 0 0; }
+.lore { font-style: italic; color: #e8d9b8 !important; }
+.steps { text-align: left; margin: 16px 0; padding: 12px 14px; border-radius: 10px; background: rgba(0,0,0,.4); border: 1px solid rgba(0,255,204,.15); font-size: 12px; line-height: 1.45; color: var(--text); }
+.steps div { display: flex; gap: 10px; margin: 6px 0; }
+.steps b { color: var(--teal); font-family: 'Orbitron', sans-serif; width: 14px; flex: none; }
+.primary {
+  width: 100%; padding: 13px; border: 0; border-radius: 12px; font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 13px; letter-spacing: .1em;
+  background: var(--teal); color: #03120f; box-shadow: 0 0 18px rgba(0,255,204,.35); transition: transform .1s;
+}
+.primary:active { transform: scale(.97); }
+.primary.warm { background: var(--amber); box-shadow: 0 0 18px rgba(255,180,84,.35); }
+.ghost { flex: 1; padding: 11px 8px; border-radius: 10px; border: 1px solid var(--teal-dim); background: rgba(0,0,0,.35); font-size: 12px; letter-spacing: .06em; color: var(--text); }
+.ghost:hover { border-color: var(--teal); }
+.row { display: flex; gap: 10px; margin-top: 10px; }
+
+/* encounter sheet */
+#sheet { align-items: flex-end; background: linear-gradient(transparent 20%, rgba(3,6,12,.85)); backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0 12px max(14px, env(safe-area-inset-bottom)); pointer-events: none; }
+#sheet .card { pointer-events: auto; max-width: 440px; max-height: 78vh; text-align: left; background: rgba(8,16,22,.92); }
+.sh-head { display: flex; align-items: center; gap: 12px; }
+#portrait { width: 84px; height: 84px; flex: none; border-radius: 12px; background: radial-gradient(circle, rgba(255,255,255,.06), rgba(0,0,0,.4)); border: 1px solid rgba(0,255,204,.2); }
+.sh-name { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .06em; }
+.sh-obj { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+.moodrow { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; letter-spacing: .1em; }
+.moodrow .bar { height: 7px; }
+.quote { font-style: italic; color: #f0e2c4; font-size: 14px; line-height: 1.5; margin: 14px 0 6px; padding-left: 12px; border-left: 2px solid var(--amber); }
+.facts { font-size: 11px; color: var(--muted); margin-bottom: 14px; line-height: 1.5; }
+
+/* play */
+#play .card, #pass .card { background: rgba(8,16,22,.95); }
+#timer { font-family: 'Orbitron', sans-serif; font-size: 46px; font-weight: 700; margin: 18px 0 6px; color: var(--amber); text-shadow: 0 0 22px rgba(255,180,84,.5); }
+#pass-to { width: 100%; margin: 14px 0; padding: 12px; border-radius: 10px; border: 1px solid var(--teal-dim); background: rgba(0,0,0,.45); color: var(--text); font: inherit; font-size: 13px; user-select: text; -webkit-user-select: text; }
+#pass-to:focus { outline: 1px solid var(--teal); }
+
+/* logs */
+#logs { align-items: stretch; justify-content: stretch; padding: 0; }
+#logs .inner { width: 100%; max-width: 560px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; padding: 14px 16px max(16px, env(safe-area-inset-bottom)); }
+.logs-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--teal-dim); }
+.logs-top h2 { font-size: 15px; }
+.x { background: none; border: 0; font-size: 28px; line-height: 1; color: var(--teal); padding: 0 6px; }
+.logs-body { overflow-y: auto; flex: 1; padding: 14px 0; touch-action: pan-y; }
+.logs-body h3 { font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: .18em; color: var(--muted); margin: 16px 0 8px; font-weight: 500; }
+.entry { display: flex; gap: 12px; padding: 10px; margin-bottom: 8px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(0,255,204,.15); }
+.entry canvas { width: 56px; height: 56px; flex: none; border-radius: 8px; background: rgba(0,0,0,.4); }
+.entry .t { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 700; color: var(--text); }
+.entry .s { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+.entry.unknown { opacity: .55; }
+.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photo { border-radius: 10px; overflow: hidden; border: 1px solid rgba(0,255,204,.2); background: #000; }
+.photo img { display: block; width: 100%; }
+.photo div { padding: 6px 8px; font-size: 10px; color: var(--muted); line-height: 1.35; }
+.footnote { font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 18px; text-align: center; }
+</style>
+</head>
+<body data-lens="2">
+
+<div id="stage">
+  <video id="video" class="hidden" playsinline autoplay muted></video>
+  <canvas id="room"></canvas>
+  <canvas id="fx"></canvas>
+</div>
+<div class="layer scan"></div>
+<div class="layer vig"></div>
+<div id="flash" class="layer"></div>
+<div id="pingring"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="glass hud-card">
+    <div class="brand"><i class="dot"></i>S.P.E.C.T.R.E. <small>HAMARTIA</small></div>
+    <div class="status" id="status">Calibrating…</div>
+    <div class="meter"><span>RESONANCE</span><div class="bar"><i id="res-bar"></i></div></div>
+    <div class="links">
+      <button class="link" id="btn-recenter" aria-label="Recenter the view">RECENTER</button>
+      <button class="link" id="btn-sound" aria-label="Toggle sound">SOUND: ON</button>
+    </div>
+  </div>
+  <canvas id="radar" class="glass" aria-hidden="true"></canvas>
+</div>
+
+<div id="pointer" aria-hidden="true">
+  <svg viewBox="0 0 24 24" id="pointer-svg" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l7-8 7 8"/><path d="M5 21l7-8 7 8" opacity=".5"/></svg>
+</div>
+
+<div id="reticle" aria-hidden="true">
+  <svg viewBox="0 0 120 120"><circle id="ring-bg" cx="60" cy="60" r="54"/><circle id="ring" cx="60" cy="60" r="54" transform="rotate(-90 60 60)"/></svg>
+  <i class="br tl"></i><i class="br tr"></i><i class="br bl"></i><i class="br brr"></i>
+  <div id="reticle-text"></div>
+</div>
+
+<div id="hint" class="glass"></div>
+
+<button id="btn-logs" class="glass" aria-label="Open field log">
+  <svg viewBox="0 0 24 24"><path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 9h8M8 13h8"/></svg>
+  <span>LOG <span id="log-count">0/4</span></span>
+</button>
+
+<div id="bar">
+  <button id="btn-lens" class="round glass" aria-label="Change lens">
+    <svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    <span id="lens-name">SPECTRAL</span>
+  </button>
+  <button id="btn-shutter" aria-label="Witness (take a photo)">
+    <div class="in"><svg viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v12H3z"/><circle cx="12" cy="13" r="4"/></svg></div>
+  </button>
+  <button id="btn-sense" class="round glass amber" aria-label="Sense: pulse to reveal nearby Hamartia">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.8"/><path d="M8 8a5.7 5.7 0 0 0 0 8M16 8a5.7 5.7 0 0 1 0 8M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14"/></svg>
+    <span>SENSE</span>
+    <span class="cd hidden" id="sense-cd"></span>
+  </button>
+</div>
+
+<div id="toast" class="glass"></div>
+
+<!-- START -->
+<div id="start" class="overlay">
+  <div class="card glass">
+    <h1 style="color:var(--teal)">S.P.E.C.T.R.E.</h1>
+    <p class="lore">Forgotten things don't vanish. They wait.<br>The glove under the bed. The unread book. The paint that dried in its tray.</p>
+    <p>These are the <b style="color:var(--amber)">Hamartia</b>: the spirits of things that were loved, then left unplayed. They can't be banished. They can only be <b>played with</b>, or <b>passed on</b> to someone who will.</p>
+    <div class="steps">
+      <div><b>1</b><span>Sweep the room slowly. They settle into <em>corners</em>, low and high. The amber arrow and the hum guide you.</span></div>
+      <div><b>2</b><span>Hold the reticle on one until it notices you noticing it.</span></div>
+      <div><b>3</b><span>Then do the real thing: play, or pass it on.</span></div>
+    </div>
+    <button id="btn-start" class="primary">BEGIN LISTENING</button>
+  </div>
+</div>
+
+<!-- ENCOUNTER -->
+<div id="sheet" class="overlay hidden">
+  <div class="card glass">
+    <div class="sh-head">
+      <canvas id="portrait" width="168" height="168"></canvas>
+      <div style="flex:1;min-width:0">
+        <div class="sh-name" id="sh-name"></div>
+        <div class="sh-obj" id="sh-obj"></div>
+        <div class="moodrow"><span id="sh-mood"></span><div class="bar"><i id="sh-bar"></i></div></div>
+      </div>
+    </div>
+    <div class="quote" id="sh-line"></div>
+    <div class="facts" id="sh-facts"></div>
+    <button class="primary warm" id="btn-play">PLAY WITH IT</button>
+    <div class="row">
+      <button class="ghost" id="btn-pass">PASS IT ON</button>
+      <button class="ghost" id="btn-leave">LEAVE IT BE</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAY SESSION -->
+<div id="play" class="overlay hidden">
+  <div class="card glass">
+    <h2 style="color:var(--amber);font-size:15px">PLAY SESSION</h2>
+    <p id="play-copy"></p>
+    <div id="timer">0:00</div>
+    <p style="color:var(--muted);font-size:12px;margin-top:0">It counts real time. Put the phone down. Come back when you're done.</p>
+    <div style="height:14px"></div>
+    <button class="primary warm" id="btn-play-done">WE PLAYED</button>
+    <div class="row"><button class="ghost" id="btn-play-cancel">NOT NOW</button></div>
+  </div>
+</div>
+
+<!-- PASS IT ON -->
+<div id="pass" class="overlay hidden">
+  <div class="card glass">
+    <h2 style="color:var(--teal);font-size:15px">PASS IT ON</h2>
+    <p id="pass-copy"></p>
+    <input id="pass-to" type="text" maxlength="60" placeholder="Who will love it? (optional)" autocomplete="off">
+    <button class="primary" id="btn-pass-done">I PASSED IT ON — FOR REAL</button>
+    <div class="row"><button class="ghost" id="btn-pass-cancel">NOT YET</button></div>
+  </div>
+</div>
+
+<!-- LOGS -->
+<div id="logs" class="overlay hidden">
+  <div class="inner">
+    <div class="logs-top">
+      <h2 style="color:var(--teal)">FIELD LOG</h2>
+      <button class="x" id="btn-logs-close" aria-label="Close log">&times;</button>
+    </div>
+    <div class="logs-body">
+      <h3>HAMARTIA</h3>
+      <div id="log-spirits"></div>
+      <h3>WITNESSED</h3>
+      <div id="log-photos" class="photos"></div>
+      <p class="footnote">Hamartia can't be exorcised. Joy fades without play, so they have to be kept company, or passed on.<br><button class="link" id="btn-reset">Clear field notes</button></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= helpers ================= */
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const wrap = a => ((a + 180) % 360 + 360) % 360 - 180;
+
+/* ================= the Hamartia ================= */
+// yaw 0 = where you were facing when you began; +yaw = to the right. pitch: + = up.
+const SPIRITS = [
+  { id: 'glove', name: 'The Unthrown', kind: 'glove', yaw: 52, pitch: -24, startJoy: 12, fade: 1, ph: 0.4,
+    object: 'a baseball glove, forgotten under the bed', real: 'your baseball glove',
+    lines: [
+      "I was oiled every spring. I held every catch. Then you grew, and I was just… under here.",
+      "You came back. Don't make it a one-time thing.",
+      "The pocket still remembers the shape of a throw.",
+      "Again? Yes. Again. Always again." ] },
+  { id: 'books', name: 'The Unread', kind: 'books', yaw: 138, pitch: 20, startJoy: 18, fade: 1, ph: 1.9,
+    object: 'a stack of books, spines never cracked', real: 'one of those books',
+    lines: [
+      "Somebody bought me hopeful. I've been a shelf ornament ever since.",
+      "Oh. You opened me. Just the first page. Keep going.",
+      "Read me out loud? I've waited so long to be heard.",
+      "Dog-ear me. Spill tea on me. That's how I know I'm loved." ] },
+  { id: 'palette', name: 'The Dried Palette', kind: 'palette', yaw: -132, pitch: -14, startJoy: 8, fade: 1, ph: 3.1,
+    object: 'a paint palette, crusted and cracked', real: 'your paints (or any paints)',
+    lines: [
+      "I was every colour you could imagine. Look at me now. Grey. Cracked. Waiting.",
+      "A little water. A little time. Not yet, but a little.",
+      "There's blue coming back! I can feel it.",
+      "Make a mess. Make it ugly. Make it yours." ] },
+  { id: 'game', name: 'The Corner Sitter', kind: 'game', yaw: -44, pitch: -18, startJoy: 5, fade: 0.7, ph: 4.6,
+    object: 'a board game nobody sits down to anymore; so faded you can nearly see the wall through it', real: 'the game',
+    lines: [
+      "We used to play on Sundays. Then you were busy. Then they stopped asking.",
+      "Are you here to stay? Don't answer yet. Just sit.",
+      "Deal me in. Bring them, if they're still here to bring.",
+      "Shuffle slow. Lose on purpose. The game was never the point." ] },
+];
+const MOODS = ['BITTER', 'WARY', 'WARMING', 'JOYFUL'];
+const LENSES = [
+  { name: 'OPTICAL', boost: 1.0 },
+  { name: 'NIGHT', boost: 1.25 },
+  { name: 'SPECTRAL', boost: 2.0 },
+];
+
+/* ================= persistence ================= */
+const KEY = 'hamartia-scanner-v2';
+function freshSave() {
+  const s = { spirits: {}, photos: [] };
+  SPIRITS.forEach(sp => { s.spirits[sp.id] = { joy: sp.startJoy, joyAt: Date.now(), found: false, sessions: [], passed: null }; });
+  return s;
+}
+function loadSave() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && s.spirits) {
+      SPIRITS.forEach(sp => { if (!s.spirits[sp.id]) s.spirits[sp.id] = freshSave().spirits[sp.id]; });
+      s.photos = s.photos || [];
+      return s;
+    }
+  } catch (e) {}
+  return freshSave();
+}
+let save = loadSave();
+function persist() {
+  for (let i = 0; i < 6; i++) {
+    try { localStorage.setItem(KEY, JSON.stringify(save)); return; }
+    catch (e) { if (!save.photos.length) return; save.photos.pop(); }
+  }
+}
+// Joy slowly drains when a Hamartia goes unplayed. Consistency is the point.
+const DECAY_PER_DAY = 6;
+function joy(sp) {
+  const st = save.spirits[sp.id];
+  return clamp(st.joy - (Date.now() - st.joyAt) / 864e5 * DECAY_PER_DAY, 0, 100);
+}
+function addJoy(sp, g) { const st = save.spirits[sp.id]; st.joy = clamp(joy(sp) + g, 0, 100); st.joyAt = Date.now(); }
+const tierOf = j => j < 25 ? 0 : j < 50 ? 1 : j < 75 ? 2 : 3;
+function streak(st) {
+  const days = new Set(st.sessions.map(s => new Date(s.t).toDateString()));
+  let d = new Date(), n = 0;
+  if (!days.has(d.toDateString())) d.setDate(d.getDate() - 1);
+  while (days.has(d.toDateString())) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+const isActive = sp => !save.spirits[sp.id].passed;
+
+/* ================= audio ================= */
+const audio = {
+  ctx: null, muted: false,
+  init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } },
+  tone(f0, f1, dur, type = 'sine', vol = 0.1, at = 0) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime + at, o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(this.ctx.destination); o.start(t); o.stop(t + dur);
+  },
+  tick(res) { this.tone(130 + res * 200, 110 + res * 160, 0.12, 'sine', 0.05 + res * 0.07); },
+  ping() { this.tone(520, 1040, 0.5, 'sine', 0.12); this.tone(260, 520, 0.7, 'triangle', 0.06, 0.05); },
+  shutter() { this.tone(300, 40, 0.15, 'sawtooth', 0.22); },
+  beep() { this.tone(880, 880, 0.07, 'sine', 0.1); },
+  notice(tier) {                       // sad sigh when bitter, warm chime when joyful
+    if (tier < 2) { this.tone(440, 300, 0.7, 'sine', 0.1); this.tone(330, 220, 0.9, 'triangle', 0.06, 0.15); }
+    else { [523, 659, 784].forEach((f, i) => this.tone(f, f, 0.5, 'sine', 0.09, i * 0.12)); }
+  },
+};
+
+/* ================= camera / view state ================= */
+const room = $('room'), fx = $('fx'), radar = $('radar'), video = $('video');
+const roomCtx = room.getContext('2d'), fxCtx = fx.getContext('2d'), radCtx = radar.getContext('2d');
+let W = 0, H = 0, dpr = 1, ppd = 12;            // ppd = pixels per degree, same on both axes
+const cam = { yaw: 0, pitch: 0 };
+const gyro = { yaw: 0, pitch: 0, live: false, ref: null };
+const manual = { yaw: 0, pitch: 0 };
+let lensIdx = 2;
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  ppd = Math.max(W, H) / 70;
+  [room, fx].forEach(c => { c.width = W * dpr; c.height = H * dpr; });
+  radar.width = 96 * dpr; radar.height = 96 * dpr;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const proj = (yaw, pitch) => {
+  const dx = wrap(yaw - cam.yaw), dy = pitch - cam.pitch;
+  return { dx, dy, x: W / 2 + dx * ppd, y: H / 2 - dy * ppd, d: Math.hypot(dx, dy) };
+};
+
+/* ---------- sensors ---------- */
+async function initCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    video.srcObject = stream; video.classList.remove('hidden'); room.classList.add('hidden');
+    return true;
+  } catch (e) { return false; }
+}
+function onOrient(e) {
+  if (e.alpha == null || e.beta == null) return;
+  if (gyro.ref === null) gyro.ref = e.alpha;
+  gyro.live = true;
+  gyro.yaw = wrap(-(e.alpha - gyro.ref));              // turn right => yaw increases
+  gyro.pitch = clamp(e.beta - 90, -80, 80);            // phone held upright = horizon
+}
+async function initMotion() {
+  if (!window.DeviceOrientationEvent) return false;
+  try {
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const r = await DeviceOrientationEvent.requestPermission();
+      if (r !== 'granted') return false;
+    }
+    window.addEventListener('deviceorientation', onOrient);
+    return true;
+  } catch (e) { return false; }
+}
+function recenter() { gyro.ref = null; manual.yaw = 0; manual.pitch = 0; cam.yaw = gyro.yaw = 0; }
+
+/* ---------- input: drag + arrow keys (works with or without gyro) ---------- */
+let drag = null;
+const blocked = t => t.closest && t.closest('button, input, .overlay:not(#sheet), #sheet .card');
+window.addEventListener('pointerdown', e => { if (blocked(e.target)) return; drag = { x: e.clientX, y: e.clientY }; });
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  manual.yaw = wrap(manual.yaw - (e.clientX - drag.x) / ppd);     // content follows the finger
+  manual.pitch = clamp(manual.pitch + (e.clientY - drag.y) / ppd, -75, 75);
+  drag.x = e.clientX; drag.y = e.clientY;
+});
+['pointerup', 'pointercancel'].forEach(n => window.addEventListener(n, () => drag = null));
+window.addEventListener('keydown', e => {
+  const k = { ArrowLeft: [-5, 0], ArrowRight: [5, 0], ArrowUp: [0, 4], ArrowDown: [0, -4] }[e.key];
+  if (k && !modal()) { manual.yaw = wrap(manual.yaw + k[0]); manual.pitch = clamp(manual.pitch + k[1], -75, 75); e.preventDefault(); }
+  if (e.key === 'Escape') { hide('logs'); }
+});
+
+/* ================= overlays ================= */
+const openSet = new Set();
+const show = id => { $(id).classList.remove('hidden'); openSet.add(id); };
+const hide = id => { $(id).classList.add('hidden'); openSet.delete(id); };
+const modal = () => openSet.size > 0;
+
+let toastTimer;
+function toast(msg, ms = 2600) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), ms);
+}
+
+/* ================= drawing the simulated room ================= */
+function renderRoom() {
+  const c = roomCtx; c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const Y = p => H / 2 - (p - cam.pitch) * ppd;
+  const yCeil = Y(42), yFloor = Y(-30);
+  c.fillStyle = '#0b0f1a'; c.fillRect(0, 0, W, H);
+  if (yCeil > 0) { c.fillStyle = '#070a12'; c.fillRect(0, 0, W, yCeil); }
+  const wy0 = Math.max(0, yCeil), wy1 = Math.min(H, yFloor);
+  if (wy1 > wy0) {
+    const g = c.createLinearGradient(0, yCeil, 0, yFloor); g.addColorStop(0, '#141d30'); g.addColorStop(1, '#0d1423');
+    c.fillStyle = g; c.fillRect(0, wy0, W, wy1 - wy0);
+  }
+  if (yFloor < H) { c.fillStyle = '#06080e'; c.fillRect(0, Math.max(0, yFloor), W, H - Math.max(0, yFloor)); }
+
+  const panel = (yaw, wd, p0, p1, fill, stroke) => {
+    const dx = wrap(yaw - cam.yaw);
+    if (Math.abs(dx) > wd / 2 + W / ppd) return;
+    const x = W / 2 + dx * ppd - wd * ppd / 2, y = Y(p1), h = (p1 - p0) * ppd;
+    c.fillStyle = fill; c.fillRect(x, y, wd * ppd, h);
+    if (stroke) { c.strokeStyle = stroke; c.lineWidth = 1; c.strokeRect(x, y, wd * ppd, h); }
+  };
+  const edge = 'rgba(0,255,204,.14)';
+  panel(0, 26, -30, 22, '#1a2336', edge);                    // door
+  panel(0, 2, -6, -3, 'rgba(255,200,120,.35)');              //   knob
+  panel(-90, 30, -2, 26, '#1d2f4a', edge);                   // window
+  panel(-90, 1, -2, 26, 'rgba(0,0,0,.5)'); panel(-90, 30, 11, 12, 'rgba(0,0,0,.5)');
+  panel(180, 36, 3, 4, '#1b2438', edge); panel(180, 36, 13, 14, '#1b2438', edge); panel(180, 36, 23, 24, '#1b2438', edge);   // shelves
+  [[-12, 4, 3, 10], [-8, 5, 4, 10], [-2, 5, 3, 9], [6, 4, 4, 11]].forEach(([o, , w, h]) => panel(180 + o, w, 4, 4 + h / 2, '#202a42'));
+  panel(90, 62, -30, -13, '#141b2e', edge);                  // bed
+  panel(90, 62, -16, -13, '#1c2742');
+  panel(90, 6, -13, 2, '#101626', edge);                     //   headboard
+
+  // corners: shaded vertical creases where Hamartia like to sit
+  [45, 135, -135, -45].forEach(cy => {
+    const x = W / 2 + wrap(cy - cam.yaw) * ppd;
+    if (x < -90 || x > W + 90) return;
+    const g = c.createLinearGradient(x - 70, 0, x + 70, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(.5, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g; c.fillRect(x - 70, Math.max(0, yCeil), 140, Math.min(H, yFloor) - Math.max(0, yCeil));
+    c.strokeStyle = 'rgba(0,255,204,.12)'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(x, yCeil); c.lineTo(x, yFloor); c.stroke();
+  });
+  c.strokeStyle = 'rgba(0,255,204,.18)'; c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(0, yFloor); c.lineTo(W, yFloor); c.stroke();      // baseboard
+}
+
+/* ================= drawing a Hamartia (unit space: head radius ≈ 6) ================= */
+const mix = j => [Math.round(lerp(135, 255, j)), Math.round(lerp(168, 190, j)), Math.round(lerp(205, 105, j))];
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+function drawObject(c, kind, col, j) {
+  c.save(); c.translate(10, 5);
+  c.fillStyle = rgba(col, .5); c.strokeStyle = rgba(col, .9); c.lineWidth = .5; c.lineJoin = 'round';
+  if (kind === 'glove') {
+    c.beginPath(); c.ellipse(0, 1, 4.8, 5.4, 0, 0, 7); c.fill(); c.stroke();
+    for (let i = 0; i < 4; i++) { c.beginPath(); c.roundRect(-4.4 + i * 2.5, -9 + Math.abs(i - 1.5) * 1.2, 2.2, 7, 1); c.fill(); c.stroke(); }
+    c.beginPath(); c.roundRect(-8, -1, 3, 5.5, 1.4); c.fill(); c.stroke();
+  } else if (kind === 'books') {
+    [[0, 11, 3.2], [-.8, 9.4, 3], [.6, 10.4, 3.2]].forEach(([dx, w, h], i) => {
+      c.beginPath(); c.rect(-5.5 + dx, 5 - (i + 1) * 3.3, w, h); c.fill(); c.stroke();
+    });
+    c.beginPath(); c.moveTo(2, -5); c.lineTo(2, -1.2); c.stroke();
+  } else if (kind === 'palette') {
+    c.beginPath(); c.ellipse(0, 1, 7.4, 5.4, -.3, 0, 7); c.fill(); c.stroke();
+    c.save(); c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(2.3, 3, 1.4, 0, 7); c.fill(); c.restore();
+    [[-4, -1, 20], [-1, -3, 210], [2.8, -2.2, 340], [-3.8, 3, 120]].forEach(([x, y, h]) => {   // dried paint regains colour as joy returns
+      c.fillStyle = `hsla(${h},${Math.round(8 + j * 80)}%,${Math.round(46 + j * 12)}%,.95)`;
+      c.beginPath(); c.arc(x, y, 1.3, 0, 7); c.fill();
+    });
+  } else {
+    c.rotate(.12);
+    c.beginPath(); c.rect(-6, -6, 12, 12); c.fill(); c.stroke();
+    c.fillStyle = rgba(col, .85);
+    for (let r = 0; r < 4; r++) for (let q = 0; q < 4; q++) if ((r + q) % 2 === 0) c.fillRect(-6 + q * 3, -6 + r * 3, 3, 3);
+  }
+  c.restore();
+}
+
+function drawSpirit(c, sp, j, alpha, t, attn) {
+  const col = mix(j);
+  const hx = attn < .3 && j < .4 ? -1.8 * (1 - attn / .3) : 0;      // sulking: head turned away until noticed
+  c.save(); c.globalAlpha = clamp(alpha, 0, 1);
+  // aura
+  let g = c.createRadialGradient(0, -2, 1, 0, -2, 19); g.addColorStop(0, rgba(col, .28 + .2 * j)); g.addColorStop(1, rgba(col, 0));
+  c.fillStyle = g; c.beginPath(); c.arc(0, -2, 19, 0, 7); c.fill();
+  // faded body (dissolves at the bottom)
+  g = c.createLinearGradient(0, -12, 0, 13); g.addColorStop(0, rgba(col, .95)); g.addColorStop(1, rgba(col, 0));
+  c.fillStyle = g;
+  c.beginPath(); c.moveTo(-8, 13); c.bezierCurveTo(-12, 2, -9, -8, -3.5, -9.5); c.lineTo(3.5, -9.5); c.bezierCurveTo(9, -8, 12, 2, 8, 13); c.closePath(); c.fill();
+  // ears: droop when sad, perk when happy
+  const tip = -14 - j * 9;
+  c.beginPath(); c.moveTo(-4 + hx, -16); c.lineTo(-15 + hx, tip + (1 - j) * 3); c.lineTo(-6 + hx, -10); c.fill();
+  c.beginPath(); c.moveTo(4 + hx, -16); c.lineTo(15 + hx, tip + (1 - j) * 3); c.lineTo(6 + hx, -10); c.fill();
+  // head
+  c.fillStyle = rgba(col, .95); c.beginPath(); c.arc(hx, -13, 6.2, 0, 7); c.fill();
+  // eyes
+  const ec = j > .5 ? '#fff4d0' : '#e6f6ff';
+  c.fillStyle = ec; c.shadowColor = rgba(col, 1); c.shadowBlur = 8;
+  const open = 1.5 - (1 - j) * .6;
+  c.beginPath(); c.ellipse(hx - 2.5, -13.2, 1.4, open, 0, 0, 7); c.ellipse(hx + 2.5, -13.2, 1.4, open, 0, 0, 7); c.fill();
+  c.shadowBlur = 0;
+  // brows slant sad -> neutral -> bright
+  c.strokeStyle = 'rgba(8,12,20,.8)'; c.lineWidth = .6; c.lineCap = 'round';
+  const bs = (1 - j) * 1.8 - .4;
+  c.beginPath(); c.moveTo(hx - 4.4, -15.4 - bs); c.lineTo(hx - 1.2, -15.4 + bs); c.moveTo(hx + 4.4, -15.4 - bs); c.lineTo(hx + 1.2, -15.4 + bs); c.stroke();
+  // mouth: frown -> smile
+  c.beginPath(); c.moveTo(hx - 2.4, -10.2); c.quadraticCurveTo(hx, -10.2 + (j - .5) * 5.5, hx + 2.4, -10.2); c.stroke();
+  // the thing it was
+  drawObject(c, sp.kind, col, j);
+  // dust motes while neglected
+  if (j < .5) {
+    c.fillStyle = rgba(col, .55);
+    for (let i = 0; i < 6; i++) { const k = (t * .00025 + i / 6) % 1; c.fillRect(-12 + i * 4.6 + Math.sin(t * .001 + i) * 1.2, -18 + k * 36, .7, .7); }
+  }
+  c.restore();
+}
+
+function drawFx(t) {
+  const c = fxCtx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+  const boost = LENSES[lensIdx].boost, pinging = t < pingUntil;
+  for (const sp of SPIRITS) {
+    if (!isActive(sp)) continue;
+    const p = proj(sp.yaw, sp.pitch);
+    if (p.x < -220 || p.x > W + 220 || p.y < -220 || p.y > H + 220) continue;
+    const j = joy(sp) / 100, r = rt[sp.id];
+    let a = (0.16 + 0.45 * j) * boost * sp.fade * (0.8 + 0.2 * Math.sin(t * .003 + sp.ph));
+    if (Math.sin(t * .0007 + sp.ph * 3) > .965) a *= .3;               // brief flicker-out
+    a = Math.max(a, r.attn * .75); if (pinging) a = Math.max(a, .85);
+    const S = ppd * .55, bob = Math.sin(t * .0015 + sp.ph) * 1.2, shake = j < .5 ? Math.sin(t * .06) * r.attn * 1.4 : 0;
+    c.save(); c.translate(p.x, p.y); c.scale(S, S); c.translate(shake, bob);
+    drawSpirit(c, sp, j, Math.min(a, .95), t, r.attn);
+    c.restore();
+    if (pinging) {
+      c.fillStyle = '#00ffcc'; c.font = "11px 'Share Tech Mono', monospace"; c.textAlign = 'center';
+      c.fillText(save.spirits[sp.id].found ? sp.name.toUpperCase() : '· · ·', p.x, p.y + S * 17);
+    }
+  }
+}
+
+/* ================= radar ================= */
+function drawRadar(t) {
+  const c = radCtx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, 96, 96);
+  const R = 44; c.translate(48, 48);
+  c.strokeStyle = 'rgba(0,255,204,.3)'; c.lineWidth = 1;
+  [R, R * .62, R * .25].forEach(r => { c.beginPath(); c.arc(0, 0, r, 0, 7); c.stroke(); });
+  c.beginPath(); c.moveTo(-R, 0); c.lineTo(R, 0); c.moveTo(0, -R); c.lineTo(0, R); c.stroke();
+  // field-of-view wedge (what's on screen right now)
+  const half = (W / ppd / 2) * Math.PI / 180;
+  c.fillStyle = 'rgba(0,255,204,.12)'; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, R, -Math.PI / 2 - half, -Math.PI / 2 + half); c.closePath(); c.fill();
+  // sweep
+  const sw = (t * .0025) % (Math.PI * 2);
+  c.save(); c.rotate(sw); const g = c.createLinearGradient(0, 0, R, 0); g.addColorStop(0, 'rgba(0,255,204,.35)'); g.addColorStop(1, 'rgba(0,255,204,0)');
+  c.strokeStyle = g; c.lineWidth = 1.5; c.beginPath(); c.moveTo(0, 0); c.lineTo(R, 0); c.stroke(); c.restore();
+  for (const sp of SPIRITS) {
+    if (!isActive(sp)) continue;
+    const p = proj(sp.yaw, sp.pitch), a = p.dx * Math.PI / 180, rr = R * Math.min(.92, .25 + p.d / 170);
+    const x = Math.sin(a) * rr, y = -Math.cos(a) * rr, found = save.spirits[sp.id].found, inView = Math.abs(p.x - W / 2) < W / 2 && Math.abs(p.y - H / 2) < H / 2;
+    c.fillStyle = found ? '#ffb454' : '#ff7a9a'; c.shadowColor = c.fillStyle; c.shadowBlur = inView ? 10 : 4;
+    c.beginPath(); c.arc(x, y, inView ? 3.6 : 2.6, 0, 7); c.fill(); c.shadowBlur = 0;
+  }
+  c.fillStyle = '#00ffcc'; c.beginPath(); c.arc(0, 0, 2, 0, 7); c.fill();
+}
+
+/* ================= game loop: finding + noticing ================= */
+const rt = {}; SPIRITS.forEach(sp => rt[sp.id] = { attn: 0 });
+const RET = 60;
+let pingUntil = 0, pingReadyAt = 0, nextTick = 0, lastT = 0, noticeCooldown = 0, focus = null, hintDone = false, hintUntil = 0;
+
+function updateFinding(t) {
+  const active = SPIRITS.filter(isActive);
+  // nearest target, preferring ones you haven't noticed yet
+  const unfound = active.filter(s => !save.spirits[s.id].found);
+  const pool = unfound.length ? unfound : active;
+  let near = null, nd = 1e9;
+  pool.forEach(s => { const p = proj(s.yaw, s.pitch); if (p.d < nd) { nd = p.d; near = { s, p }; } });
+
+  const res = near ? Math.pow(clamp(1 - nd / 100, 0, 1), 1.4) : 0;
+  $('res-bar').style.width = (res * 100).toFixed(0) + '%';
+
+  const ptr = $('pointer');
+  if (near && !modal()) {
+    const { p } = near, off = p.x < 40 || p.x > W - 40 || p.y < 150 || p.y > H - 150;
+    if (off) {
+      const ang = Math.atan2(p.x - W / 2, -(p.y - H / 2)) * 180 / Math.PI, rad = Math.min(W, H) * .34;
+      ptr.style.transform = `rotate(${ang}deg) translateY(${-rad}px)`;
+      ptr.style.opacity = '1';
+      $('pointer-svg').style.animationDuration = lerp(1.1, .3, res) + 's';
+    } else ptr.style.opacity = '0';
+  } else ptr.style.opacity = '0';
+
+  // status line
+  let s;
+  if (!active.length) s = 'Every Hamartia has been carried on. The room is quiet.';
+  else if (focus) s = 'Hold steady. It is deciding whether to trust you.';
+  else if (!unfound.length) s = 'All found. They fade without company, so check on them.';
+  else if (nd < 22) s = 'Right here. Bring the reticle onto it.';
+  else if (nd < 60) s = 'Something sad is waiting very close.';
+  else s = 'Sweep slowly. Check the corners, low and high.';
+  if ($('status').textContent !== s) $('status').textContent = s;
+
+  // hot/cold hum
+  if (audio.ctx && !audio.muted && !modal() && t >= nextTick && near) { audio.tick(res); nextTick = t + lerp(1600, 170, res); }
+}
+
+function updateAttention(dt, t) {
+  let best = null, bd = 1e9;
+  if (!modal() && t > noticeCooldown) {
+    for (const sp of SPIRITS) {
+      if (!isActive(sp)) continue;
+      const p = proj(sp.yaw, sp.pitch), d = Math.hypot(p.x - W / 2, p.y - H / 2);
+      if (d < RET + 18 && d < bd) { bd = d; best = sp; }
+    }
+  }
+  if (best && best !== focus && navigator.vibrate) navigator.vibrate(12);
+  focus = best;
+  for (const sp of SPIRITS) {
+    const r = rt[sp.id];
+    r.attn = sp === best ? Math.min(1, r.attn + dt / 1400) : Math.max(0, r.attn - dt / 700);
+  }
+  $('ring').style.strokeDashoffset = (339.3 * (1 - (best ? rt[best.id].attn : 0))).toFixed(1);
+  $('reticle-text').textContent = best ? 'NOTICING…' : '';
+  if (best && rt[best.id].attn >= 1) { rt[best.id].attn = 0; openEncounter(best); }
+}
+
+function frame(t) {
+  const dt = Math.min(60, t - lastT || 16); lastT = t;
+  // camera: gyro + manual look offset, smoothed by shortest path (no spin at ±180°)
+  const tYaw = wrap(gyro.yaw + manual.yaw), tPitch = clamp(gyro.pitch + manual.pitch, -75, 75);
+  cam.yaw = wrap(cam.yaw + wrap(tYaw - cam.yaw) * .2);
+  cam.pitch += (tPitch - cam.pitch) * .2;
+
+  if (!video.srcObject) renderRoom();
+  updateAttention(dt, t);
+  updateFinding(t);
+  drawFx(t);
+  drawRadar(t);
+  if (openSet.has('sheet') && current) drawPortrait(t);
+  if (t > hintUntil && !hintDone) { hintDone = true; $('hint').style.opacity = '0'; }
+  const cd = pingReadyAt - t;
+  $('sense-cd').classList.toggle('hidden', cd <= 0);
+  if (cd > 0) $('sense-cd').textContent = Math.ceil(cd / 1000) + 's';
+  requestAnimationFrame(frame);
+}
+
+/* ================= encounter / play / pass ================= */
+let current = null, playStart = 0, playTimer = null, hasPlayed = false;
+
+function drawPortrait(t) {
+  const c = $('portrait').getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 168, 168);
+  c.translate(84, 90); c.scale(4.3, 4.3);
+  drawSpirit(c, current, joy(current) / 100, .95, t, 1);
+}
+
+function openEncounter(sp, gained) {
+  current = sp;
+  const st = save.spirits[sp.id], j = joy(sp), ti = tierOf(j);
+  const firstTime = !st.found; st.found = true; persist();
+  $('sh-name').textContent = sp.name;
+  $('sh-obj').textContent = sp.object;
+  $('sh-mood').textContent = MOODS[ti]; $('sh-mood').style.color = ti < 2 ? '#8fb8ff' : '#ffb454';
+  $('sh-bar').style.width = j.toFixed(0) + '%';
+  $('sh-line').textContent = '“' + sp.lines[ti] + '”';
+  const sn = st.sessions.length, sk = streak(st);
+  $('sh-facts').textContent = (gained ? `+${gained} warmth. ` : '') +
+    (sn ? `${sn} play session${sn > 1 ? 's' : ''} · ${sk}-day streak. ` : 'Nobody has played with it yet. ') +
+    (j < 25 ? 'It cannot be banished. Only kept company.' : '');
+  show('sheet'); updateLogCount();
+  audio.notice(ti);
+  if (firstTime) { toast(`${sp.name} noticed you.`); hintDone = true; $('hint').style.opacity = '0'; }
+}
+function closeSheet() { hide('sheet'); current = null; noticeCooldown = performance.now() + 2500; }
+
+$('btn-leave').onclick = closeSheet;
+
+$('btn-play').onclick = () => {
+  const sp = current; hide('sheet');
+  $('play-copy').textContent = `${sp.name} is watching. Go find ${sp.real}, and really play. Not for a minute. Properly.`;
+  playStart = Date.now(); $('timer').textContent = '0:00';
+  show('play');
+  playTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - playStart) / 1000);
+    $('timer').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }, 500);
+};
+function endPlay() { clearInterval(playTimer); hide('play'); }
+$('btn-play-cancel').onclick = () => { endPlay(); openEncounter(current); };
+$('btn-play-done').onclick = () => {
+  endPlay();
+  const sp = current, minutes = (Date.now() - playStart) / 60000, gain = Math.round(clamp(5 + minutes * 3, 5, 35));
+  save.spirits[sp.id].sessions.push({ t: Date.now(), minutes: +minutes.toFixed(1) });
+  addJoy(sp, gain); persist();
+  if (minutes < 1) toast('That was barely a minute. It noticed.');
+  openEncounter(sp, gain);
+};
+
+$('btn-pass').onclick = () => {
+  $('pass-copy').textContent = `Some things have had their season. If ${current.name} has outlived its time with you, give it to someone who'll really use it. Only mark this once it's actually done.`;
+  $('pass-to').value = ''; hide('sheet'); show('pass');
+};
+$('btn-pass-cancel').onclick = () => { hide('pass'); openEncounter(current); };
+$('btn-pass-done').onclick = () => {
+  const sp = current, to = $('pass-to').value.trim();
+  save.spirits[sp.id].passed = { to, at: Date.now() }; persist();
+  hide('pass'); current = null; noticeCooldown = performance.now() + 2500;
+  audio.notice(3); updateLogCount();
+  toast(`${sp.name} leaves warm, on its way to someone who'll use it.`, 4200);
+};
+
+/* ================= witness (photo) ================= */
+function witness() {
+  audio.shutter();
+  const fl = $('flash'); fl.style.opacity = '1'; setTimeout(() => fl.style.opacity = '0', 220);
+  const seen = SPIRITS.filter(sp => { if (!isActive(sp)) return false; const p = proj(sp.yaw, sp.pitch); return p.x > 0 && p.x < W && p.y > 0 && p.y < H; });
+  if (!seen.length) { toast('Only an empty room. Keep listening.'); return; }
+  const cw = 480, ch = Math.round(480 * H / W), cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+  const c = cv.getContext('2d');
+  const src = video.srcObject ? video : room, sw = video.srcObject ? video.videoWidth : room.width, sh = video.srcObject ? video.videoHeight : room.height;
+  const sc = Math.max(cw / sw, ch / sh); c.drawImage(src, (cw - sw * sc) / 2, (ch - sh * sc) / 2, sw * sc, sh * sc);
+  c.drawImage(fx, 0, 0, cw, ch);
+  c.fillStyle = '#00ffcc'; c.font = "12px 'Share Tech Mono', monospace"; c.fillText('SPECTRE · ' + new Date().toLocaleString(), 12, ch - 12);
+  const names = seen.map(s => s.name);
+  save.photos.unshift({ url: cv.toDataURL('image/jpeg', .6), names, t: Date.now(), moods: seen.map(s => MOODS[tierOf(joy(s))]) });
+  save.photos = save.photos.slice(0, 12); persist();
+  toast('Witnessed: ' + names.join(', '));
+}
+
+/* ================= log ================= */
+function updateLogCount() {
+  const f = SPIRITS.filter(sp => save.spirits[sp.id].found).length;
+  $('log-count').textContent = `${f}/${SPIRITS.length}`;
+}
+function renderLogs() {
+  const box = $('log-spirits'); box.innerHTML = '';
+  SPIRITS.forEach(sp => {
+    const st = save.spirits[sp.id], el = document.createElement('div'), cv = document.createElement('canvas');
+    cv.width = cv.height = 112;
+    el.className = 'entry' + (st.found ? '' : ' unknown');
+    const info = document.createElement('div'); info.style.minWidth = 0;
+    if (!st.found) {
+      info.innerHTML = '<div class="t">???</div><div class="s">Not yet found. Look in the corners.</div>';
+      el.append(cv, info); box.appendChild(el);
+      const c = cv.getContext('2d'); c.translate(56, 60); c.scale(2.8, 2.8); drawSpirit(c, sp, 0.05, .3, 0, 0);
+      return;
+    }
+    const j = joy(sp), sn = st.sessions.length, mins = st.sessions.reduce((a, s) => a + s.minutes, 0);
+    const status = st.passed
+      ? `Passed on${st.passed.to ? ' to ' + st.passed.to.replace(/[<>&]/g, '') : ''}, ${new Date(st.passed.at).toLocaleDateString()}.`
+      : `${MOODS[tierOf(j)]} · ${Math.round(j)}% · ${sn} session${sn === 1 ? '' : 's'} (${Math.round(mins)} min) · ${streak(st)}-day streak`;
+    info.innerHTML = `<div class="t">${sp.name}</div><div class="s">${sp.object}</div><div class="s" style="color:${st.passed ? '#00ffcc' : '#ffb454'}">${status}</div>`;
+    el.append(cv, info); box.appendChild(el);
+    const c = cv.getContext('2d'); c.translate(56, 60); c.scale(2.8, 2.8); drawSpirit(c, sp, st.passed ? 1 : j / 100, st.passed ? .45 : .95, 0, 1);
+  });
+  const pb = $('log-photos'); pb.innerHTML = '';
+  if (!save.photos.length) pb.innerHTML = '<div class="s" style="grid-column:1/-1;color:var(--muted);font-size:12px">Nothing witnessed yet. Press the shutter with a Hamartia on screen.</div>';
+  save.photos.forEach(p => {
+    const d = document.createElement('div'); d.className = 'photo';
+    d.innerHTML = `<img alt="Witnessed photo"><div></div>`;
+    d.querySelector('img').src = p.url;
+    d.querySelector('div').textContent = p.names.map((n, i) => `${n} (${p.moods[i].toLowerCase()})`).join(', ') + ' · ' + new Date(p.t).toLocaleDateString();
+    pb.appendChild(d);
+  });
+}
+$('btn-logs').onclick = () => { audio.beep(); renderLogs(); show('logs'); };
+$('btn-logs-close').onclick = () => hide('logs');
+$('btn-reset').onclick = () => {
+  if (!confirm('Clear all field notes? Every Hamartia goes back to unfound and bitter.')) return;
+  save = freshSave(); persist(); renderLogs(); updateLogCount();
+};
+
+/* ================= controls ================= */
+$('btn-shutter').onclick = witness;
+$('btn-recenter').onclick = () => { recenter(); toast('View recentered.'); };
+$('btn-sound').onclick = () => { audio.muted = !audio.muted; $('btn-sound').textContent = 'SOUND: ' + (audio.muted ? 'OFF' : 'ON'); };
+$('btn-lens').onclick = () => {
+  audio.beep(); lensIdx = (lensIdx + 1) % LENSES.length;
+  document.body.dataset.lens = lensIdx; $('lens-name').textContent = LENSES[lensIdx].name;
+  toast(lensIdx === 2 ? 'SPECTRAL: Hamartia are clearest here.' : `${LENSES[lensIdx].name} lens`);
+};
+$('btn-sense').onclick = () => {
+  const now = performance.now(); if (now < pingReadyAt || modal()) return;
+  audio.init(); audio.ping(); pingUntil = now + 2600; pingReadyAt = now + 7000;
+  const r = $('pingring'); r.classList.remove('go'); void r.offsetWidth; r.classList.add('go');
+  if (navigator.vibrate) navigator.vibrate(30);
+};
+
+$('btn-start').onclick = async () => {
+  audio.init(); audio.beep();
+  const motionP = initMotion();            // must be requested straight from the tap (iOS)
+  const camP = initCamera();
+  hide('start');
+  const [motion, cam_] = await Promise.all([motionP, camP]);
+  $('hint').textContent = 'Sweep slowly. Hamartia settle into corners, low and high. Follow the arrow.';
+  hintUntil = performance.now() + 14000;
+  setTimeout(() => {
+    toast(gyro.live ? 'Motion sensors live. Turn your body to look around.' :
+      (motion ? 'Drag (or arrow keys) to look around.' : 'No motion sensor: drag or use arrow keys to look around.'), 3600);
+  }, 1200);
+  if (!cam_) setTimeout(() => toast('No camera: using the simulated room.', 3000), 5000);
+};
+
+/* ================= boot ================= */
+show('start');
+updateLogCount();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
