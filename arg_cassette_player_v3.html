@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d0b0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Cassette-Corder CR-340</title>
+<style>
+  :root {
+    --W: 880px;
+    --H: 400px;
+    --cream: #efe8d2;
+    --ink: #1c1d20;
+    --silver: #dcdde0;
+    --sans: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, "Courier New", monospace;
+    --hand: "Bradley Hand", "Segoe Print", "Noteworthy", "Marker Felt", "Comic Sans MS", cursive;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #0b0908;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    font-family: var(--sans);
+  }
+
+  /* dark tabletop the deck sits on */
+  body {
+    background:
+      radial-gradient(ellipse at 50% 38%, rgba(255, 214, 160, .10), transparent 62%),
+      radial-gradient(ellipse at 50% 50%, #2b2420 0%, #0d0b0a 78%);
+  }
+
+  #fit {
+    position: fixed;
+    left: 0; top: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    display: grid;
+    place-items: center;
+  }
+  #wrap { position: relative; width: 880px; height: 400px; }
+  #stage { position: absolute; left: 0; top: 0; width: var(--W); height: var(--H); transform-origin: 0 0; }
+
+  /* ---------- cabinet: walnut veneer + black plastic panel ---------- */
+  #deck {
+    position: absolute; inset: 0;
+    border-radius: 22px;
+    padding: 11px;
+    background:
+      repeating-linear-gradient(91deg, rgba(0,0,0,.22) 0 1px, transparent 1px 6px),
+      repeating-linear-gradient(89deg, rgba(255,214,160,.09) 0 2px, transparent 2px 13px),
+      linear-gradient(180deg, #86532e, #55301a 55%, #3b2110);
+    box-shadow:
+      0 26px 40px rgba(0,0,0,.75),
+      0 4px 8px rgba(0,0,0,.6),
+      inset 0 2px 1px rgba(255,255,255,.22),
+      inset 0 -3px 4px rgba(0,0,0,.6);
+  }
+  #panel {
+    position: relative;
+    height: 100%;
+    border-radius: 14px;
+    padding: 10px 12px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    background:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.10'/></svg>"),
+      linear-gradient(180deg, #26272b, #141518);
+    box-shadow: inset 0 0 0 1px #000, inset 0 3px 8px rgba(0,0,0,.85), 0 1px 0 rgba(255,255,255,.14);
+  }
+
+  /* brushed aluminium plate */
+  .plate {
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,.20) 0 1px, rgba(0,0,0,.05) 1px 2px),
+      linear-gradient(180deg, #dadcdf, #a6a9af);
+    border-radius: 6px;
+    color: #25262a;
+    box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(0,0,0,.35), 0 2px 4px rgba(0,0,0,.65);
+  }
+
+  /* ---------- top strip ---------- */
+  .top { height: 32px; display: flex; align-items: center; justify-content: space-between; flex: none; }
+  .brand {
+    height: 28px; padding: 0 12px;
+    display: flex; align-items: baseline; gap: 10px;
+    line-height: 28px;
+  }
+  .brand b { font-size: 15px; font-weight: 900; letter-spacing: .22em; font-style: italic; }
+  .brand i { font-size: 8.5px; font-style: normal; font-weight: 700; letter-spacing: .2em; opacity: .75; }
+  .brand em { font-size: 8.5px; font-style: normal; font-weight: 700; letter-spacing: .14em; font-family: var(--mono); padding-left: 10px; border-left: 1px solid rgba(0,0,0,.35); }
+
+  .lamps { display: flex; gap: 18px; align-items: center; padding-right: 4px; }
+  .lamp { display: flex; align-items: center; gap: 7px; }
+  .lamp label { font-size: 8.5px; font-weight: 700; letter-spacing: .16em; color: #9a9ca2; }
+  .led {
+    --c: #3a1410;
+    width: 12px; height: 12px; border-radius: 50%;
+    background-color: var(--c);
+    background-image: radial-gradient(circle at 34% 28%, rgba(255,255,255,.8) 0 9%, rgba(255,255,255,0) 40%);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.55), 0 0 0 2px #09090a, 0 0 0 3px rgba(255,255,255,.16);
+    transition: background-color .25s, box-shadow .25s;
+  }
+  .led.run.on    { --c: #62ff8e; box-shadow: inset 0 0 0 1px rgba(0,0,0,.3), 0 0 0 2px #09090a, 0 0 0 3px rgba(255,255,255,.16), 0 0 12px 3px rgba(98,255,142,.65); }
+  .led.run       { --c: #123a1e; }
+  .led.lock      { --c: #8d1c12; box-shadow: inset 0 0 0 1px rgba(0,0,0,.4), 0 0 0 2px #09090a, 0 0 0 3px rgba(255,255,255,.16), 0 0 8px 1px rgba(255,60,40,.45); }
+  .led.lock.open { --c: #62ff8e; box-shadow: inset 0 0 0 1px rgba(0,0,0,.3), 0 0 0 2px #09090a, 0 0 0 3px rgba(255,255,255,.16), 0 0 12px 3px rgba(98,255,142,.65); }
+  .led.lock.blink { animation: blink .45s steps(2) 3; }
+  @keyframes blink { 50% { --c: #ff6a55; filter: brightness(1.8); } }
+
+  /* ---------- middle row ---------- */
+  .mid { flex: 1; min-height: 0; display: flex; gap: 12px; }
+
+  .speaker {
+    flex: 0 1 188px; min-width: 130px;
+    border-radius: 8px; padding: 7px;
+    background: linear-gradient(180deg, #c9cbcf, #8e9198);
+    box-shadow: inset 0 1px 0 #fff, inset 0 -1px 2px rgba(0,0,0,.5), 0 2px 5px rgba(0,0,0,.7);
+  }
+  .grille {
+    position: relative; width: 100%; height: 100%; border-radius: 4px;
+    background:
+      radial-gradient(circle at 50% 50%, #040405 0 1.7px, rgba(0,0,0,0) 2.2px) 0 0 / 9px 9px,
+      radial-gradient(circle at 50% 50%, #040405 0 1.7px, rgba(0,0,0,0) 2.2px) 4.5px 4.5px / 9px 9px,
+      linear-gradient(135deg, #bfc2c7, #7f838a);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.5), inset 0 3px 7px rgba(0,0,0,.45);
+  }
+  .grille::after { /* soft sheen */
+    content: ""; position: absolute; inset: 0; border-radius: 4px;
+    background: linear-gradient(115deg, rgba(255,255,255,.28) 0, rgba(255,255,255,0) 40%, rgba(0,0,0,.18) 100%);
+    pointer-events: none;
+  }
+  .grille.pulse { animation: cone .18s ease-in-out infinite alternate; }
+  @keyframes cone { from { filter: brightness(1); } to { filter: brightness(.93); } }
+
+  .bay {
+    flex: 1 1 auto; min-width: 0;
+    position: relative; border-radius: 10px; padding: 7px;
+    background: linear-gradient(180deg, #060607, #121214);
+    box-shadow: inset 0 0 0 2px #2a2b2f, inset 0 5px 12px #000, 0 1px 0 rgba(255,255,255,.14);
+    display: grid; place-items: center;
+  }
+  .bay svg#cassette { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 5px rgba(0,0,0,.8)); }
+  .bay::after { /* smoked acrylic door reflection */
+    content: ""; position: absolute; inset: 0; border-radius: 10px; pointer-events: none;
+    background:
+      linear-gradient(112deg, rgba(255,255,255,.10) 0 24%, transparent 24% 46%, rgba(255,255,255,.05) 46% 53%, transparent 53%),
+      linear-gradient(180deg, rgba(255,255,255,.06), transparent 30%);
+  }
+
+  .right { flex: 0 0 204px; display: flex; flex-direction: column; gap: 8px; }
+  .counter { flex: 1.2; padding: 6px 8px 7px; display: flex; flex-direction: column; justify-content: space-between; }
+  .vu { flex: 1; padding: 5px; }
+  .silk { font-size: 8px; font-weight: 800; letter-spacing: .17em; color: #3a3b40; }
+  .row { display: flex; justify-content: space-between; align-items: center; }
+
+  .drums {
+    display: flex; gap: 3px; padding: 4px; border-radius: 5px; justify-content: center;
+    background: #050506;
+    box-shadow: inset 0 2px 6px #000, 0 1px 0 rgba(255,255,255,.55);
+  }
+  .drum {
+    position: relative; width: 40px; height: 62px; border-radius: 3px; overflow: hidden;
+    touch-action: none; cursor: ns-resize; outline: none;
+    background: #0a0a0b;
+  }
+  .drum canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .drum::after { /* cylinder shading + glass */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,.82) 0, rgba(0,0,0,0) 26%, rgba(255,255,255,.08) 47%, rgba(0,0,0,0) 64%, rgba(0,0,0,.86) 100%);
+  }
+  .drum i { position: absolute; left: 0; right: 0; text-align: center; font-style: normal; font-size: 7px; color: #f1ede0; opacity: .28; z-index: 2; pointer-events: none; line-height: 1; }
+  .drum i.u { top: 3px; } .drum i.d { bottom: 3px; }
+  .drum:focus-visible { box-shadow: 0 0 0 2px #e2711d; }
+
+  .minibtn {
+    font: 800 9px/1 var(--sans); letter-spacing: .14em; color: #d9dadd;
+    height: 24px; padding: 0 12px; border: 0; border-radius: 3px; cursor: pointer;
+    background: linear-gradient(180deg, #3b3c41, #1d1e22);
+    box-shadow: 0 3px 0 #08080a, 0 4px 5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.25);
+    transition: transform .06s, box-shadow .06s;
+  }
+  .minibtn:active { transform: translateY(2px); box-shadow: 0 1px 0 #08080a, inset 0 1px 3px rgba(0,0,0,.6); }
+
+  /* ---------- piano keys ---------- */
+  .keys {
+    flex: none; height: 78px; display: flex; gap: 7px; padding: 6px 7px 14px; border-radius: 7px;
+    background: #050506;
+    box-shadow: inset 0 3px 9px #000, 0 1px 0 rgba(255,255,255,.14);
+  }
+  .key {
+    position: relative; flex: 1 1 0; min-width: 0; border: 0; padding: 7px 4px 6px; border-radius: 4px 4px 3px 3px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    color: var(--silver); cursor: pointer; font-family: var(--sans);
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px),
+      linear-gradient(180deg, #484950 0, #303136 14%, #222327 100%);
+    box-shadow: 0 8px 0 #0a0a0c, 0 10px 9px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.3), inset 1px 0 0 rgba(255,255,255,.08), inset -1px 0 0 rgba(0,0,0,.5);
+    transition: transform .07s, box-shadow .07s, filter .15s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .key.wide { flex-grow: 1.35; }
+  .key .ico { width: 26px; height: 17px; fill: currentColor; flex: none; }
+  .key span { font-size: 10.5px; font-weight: 800; letter-spacing: .16em; line-height: 1; }
+  .key small { font-size: 7.5px; font-weight: 700; letter-spacing: .16em; line-height: 1; opacity: .7; }
+  .key:active, .key.down {
+    transform: translateY(6px);
+    box-shadow: 0 2px 0 #0a0a0c, 0 3px 4px rgba(0,0,0,.6), inset 0 2px 6px rgba(0,0,0,.7);
+    background: linear-gradient(180deg, #1c1d21, #2a2b30);
+    filter: brightness(1.08);
+  }
+  .key:focus-visible { outline: 2px solid #e2711d; outline-offset: 2px; }
+  #k-play .ico { color: #6ee89a; }
+  #k-stop .ico { color: #ff7a5c; }
+  #k-iz { color: #b79a94; background: linear-gradient(180deg, #5a2a22, #3a1913 16%, #2a110d 100%); }
+  #k-iz.unlocked { color: #ffd9b8; background: linear-gradient(180deg, #d4561f, #a33a14 18%, #7e2a0e 100%); }
+  #k-iz.unlocked.down { background: linear-gradient(180deg, #7a2a0c, #92340f); }
+  #k-iz .lock-open { display: none; }
+  #k-iz.unlocked .lock-open { display: block; }
+  #k-iz.unlocked .lock-closed { display: none; }
+  #k-iz.unlocked.glow { box-shadow: 0 8px 0 #0a0a0c, 0 10px 9px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.35), 0 0 18px 2px rgba(255,120,40,.45); }
+  .key.nope { animation: nope .32s; }
+  @keyframes nope { 20% { transform: translateX(-3px) translateY(2px); } 40% { transform: translateX(3px) translateY(3px); } 60% { transform: translateX(-2px) translateY(2px); } 80% { transform: translateX(1px); } }
+
+  /* ---------- portrait nag (touch devices only) ---------- */
+  #rotate { display: none; }
+  @media (orientation: portrait) and (pointer: coarse) {
+    #rotate {
+      position: fixed; inset: 0; z-index: 99; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+      background: #0b0908; color: #cfc6b8; font: 700 12px var(--sans); letter-spacing: .25em;
+    }
+    #rotate svg { width: 70px; height: 70px; animation: tilt 2.4s ease-in-out infinite; transform-origin: 50% 50%; }
+  }
+  @keyframes tilt { 0%, 15% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
+</style>
+</head>
+<body>
+
+<div id="fit">
+  <div id="wrap">
+    <div id="stage">
+      <div id="deck">
+        <div id="panel">
+
+          <!-- brand + lamps -->
+          <div class="top">
+            <div class="brand plate"><b>KESTREL</b><i>CASSETTE-CORDER</i><em>CR-340</em></div>
+            <div class="lamps">
+              <div class="lamp"><span id="lamp-run" class="led run"></span><label>TAPE</label></div>
+              <div class="lamp"><span id="lamp-lock" class="led lock"></span><label>INTER-ZONE</label></div>
+            </div>
+          </div>
+
+          <div class="mid">
+            <!-- speaker -->
+            <div class="speaker"><div class="grille" id="grille"></div></div>
+
+            <!-- cassette bay -->
+            <div class="bay">
+              <svg id="cassette" viewBox="0 0 400 254" aria-label="Cassette tape">
+                <defs>
+                  <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#4f525a"/><stop offset=".45" stop-color="#2f3137"/><stop offset="1" stop-color="#1d1f23"/>
+                  </linearGradient>
+                  <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#f6f0de"/><stop offset="1" stop-color="#e2d9bd"/>
+                  </linearGradient>
+                  <radialGradient id="pack" cx=".36" cy=".32" r=".85">
+                    <stop offset="0" stop-color="#6a4330"/><stop offset=".55" stop-color="#3b2216"/><stop offset="1" stop-color="#22120b"/>
+                  </radialGradient>
+                  <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#f4f5f7"/><stop offset=".5" stop-color="#9da1a8"/><stop offset="1" stop-color="#d9dbdf"/>
+                  </linearGradient>
+                  <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#fff" stop-opacity=".30"/><stop offset=".5" stop-color="#fff" stop-opacity=".04"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                  </linearGradient>
+                  <linearGradient id="winbg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#050506"/><stop offset="1" stop-color="#17181c"/>
+                  </linearGradient>
+                  <clipPath id="winClip"><rect x="80" y="66" width="240" height="80" rx="38"/></clipPath>
+                  <clipPath id="labelClip"><rect x="24" y="22" width="352" height="144" rx="6"/></clipPath>
+                </defs>
+
+                <!-- plastic shell -->
+                <rect x="2" y="2" width="396" height="250" rx="15" fill="url(#shell)" stroke="#0a0a0b" stroke-width="2"/>
+                <rect x="5" y="5" width="390" height="244" rx="12" fill="none" stroke="#fff" stroke-opacity=".13"/>
+                <path d="M10 242 Q10 249 18 249 H382 Q390 249 390 242" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="2"/>
+
+                <!-- paper label -->
+                <rect x="24" y="22" width="352" height="144" rx="6" fill="url(#paper)" stroke="#000" stroke-opacity=".35"/>
+                <g clip-path="url(#labelClip)">
+                  <rect x="24" y="22" width="352" height="9" fill="#d4572a"/>
+                  <rect x="24" y="31" width="352" height="3" fill="#e8a33a"/>
+                  <rect x="24" y="148" width="352" height="6" fill="#2f7f98"/>
+                  <rect x="24" y="154" width="352" height="6" fill="#e8a33a"/>
+                  <rect x="24" y="160" width="352" height="6" fill="#d4572a"/>
+                  <!-- ruled writing lines -->
+                  <line x1="64" y1="45" x2="368" y2="45" stroke="#6d7b92" stroke-opacity=".55" stroke-width=".7"/>
+                  <line x1="64" y1="58" x2="368" y2="58" stroke="#6d7b92" stroke-opacity=".55" stroke-width=".7"/>
+                </g>
+                <rect x="30" y="38" width="26" height="22" rx="2" fill="#1c1d20"/>
+                <text x="43" y="55" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="900" font-size="19" fill="#efe8d2">A</text>
+                <text x="370" y="143" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-weight="800" font-size="8" fill="#555" letter-spacing="1.5">C-60</text>
+                <text x="30" y="143" font-family="Helvetica, Arial, sans-serif" font-weight="800" font-size="8" fill="#555" letter-spacing="1.5">TYPE I</text>
+                <text id="lbl1" x="70" y="43" font-family="'Bradley Hand','Segoe Print','Noteworthy','Marker Felt','Comic Sans MS',cursive" font-size="12" fill="#1c3b8f" transform="rotate(-1 70 43)"></text>
+                <text id="lbl2" x="70" y="56" font-family="'Bradley Hand','Segoe Print','Noteworthy','Marker Felt','Comic Sans MS',cursive" font-size="12" fill="#1c3b8f" transform="rotate(-.6 70 56)"></text>
+
+                <!-- window -->
+                <rect x="78" y="64" width="244" height="84" rx="40" fill="#0b0b0d" stroke="#000" stroke-opacity=".6" stroke-width="2"/>
+                <rect x="80" y="66" width="240" height="80" rx="38" fill="url(#winbg)"/>
+                <g clip-path="url(#winClip)">
+                  <!-- tape running to the bottom guide rollers -->
+                  <path id="tapeL" d="" fill="none" stroke="#4a2b1b" stroke-width="2.6" stroke-linecap="round"/>
+                  <path id="tapeR" d="" fill="none" stroke="#4a2b1b" stroke-width="2.6" stroke-linecap="round"/>
+                  <!-- left reel -->
+                  <g transform="translate(136 106)">
+                    <circle id="pL0" r="36" fill="url(#pack)"/>
+                    <circle id="pL1" r="30" fill="none" stroke="#000" stroke-opacity=".28" stroke-width=".8"/>
+                    <circle id="pL2" r="24" fill="none" stroke="#000" stroke-opacity=".25" stroke-width=".8"/>
+                    <circle id="pL3" r="36" fill="none" stroke="#fff" stroke-opacity=".10" stroke-width="1.2"/>
+                  </g>
+                  <g id="rotL" transform="translate(136 106)"><line id="seamL" x1="0" y1="-18" x2="0" y2="-34" stroke="#fff" stroke-opacity=".16" stroke-width="1.3"/><g class="hub"></g></g>
+                  <!-- right reel -->
+                  <g transform="translate(264 106)">
+                    <circle id="pR0" r="22" fill="url(#pack)"/>
+                    <circle id="pR1" r="30" fill="none" stroke="#000" stroke-opacity=".28" stroke-width=".8"/>
+                    <circle id="pR2" r="24" fill="none" stroke="#000" stroke-opacity=".25" stroke-width=".8"/>
+                    <circle id="pR3" r="22" fill="none" stroke="#fff" stroke-opacity=".10" stroke-width="1.2"/>
+                  </g>
+                  <g id="rotR" transform="translate(264 106)"><line id="seamR" x1="0" y1="-18" x2="0" y2="-24" stroke="#fff" stroke-opacity=".16" stroke-width="1.3"/><g class="hub"></g></g>
+                </g>
+                <rect x="80" y="66" width="240" height="80" rx="38" fill="none" stroke="#000" stroke-opacity=".7" stroke-width="3"/>
+                <path d="M88 72 H206 L160 142 H88 Z" clip-path="url(#winClip)" fill="url(#glass)"/>
+
+                <!-- bottom head / roller section -->
+                <path d="M52 174 H348 L372 242 H28 Z" fill="#141518" stroke="#07070a" stroke-width="4" stroke-linejoin="round"/>
+                <path d="M54 176.5 H346" stroke="#fff" stroke-opacity=".13" stroke-width="1.2"/>
+                <rect x="94" y="204" width="40" height="30" rx="4" fill="#040405" stroke="#2a2b30"/>
+                <rect x="266" y="204" width="40" height="30" rx="4" fill="#040405" stroke="#2a2b30"/>
+                <rect x="160" y="200" width="80" height="34" rx="3" fill="#040405" stroke="#2a2b30"/>
+                <!-- pressure pad + spring -->
+                <rect x="186" y="208" width="28" height="15" rx="1.5" fill="#c4953f"/>
+                <rect x="186" y="208" width="28" height="4" rx="1.5" fill="#e6bf6a"/>
+                <path d="M178 232 L190 224 M222 232 L210 224" stroke="#b87333" stroke-width="2" stroke-linecap="round"/>
+                <!-- guide rollers -->
+                <circle cx="44" cy="228" r="10.5" fill="url(#chrome)" stroke="#222" stroke-width="1.5"/><circle cx="44" cy="228" r="4" fill="#0b0b0c"/>
+                <circle cx="356" cy="228" r="10.5" fill="url(#chrome)" stroke="#222" stroke-width="1.5"/><circle cx="356" cy="228" r="4" fill="#0b0b0c"/>
+                <!-- tape ribbon across the front -->
+                <rect x="44" y="224" width="312" height="5" fill="#4d2e1d"/>
+                <rect x="44" y="224" width="312" height="1.4" fill="#fff" fill-opacity=".16"/>
+                <!-- alignment holes -->
+                <circle cx="78" cy="196" r="3" fill="#040405"/><circle cx="322" cy="196" r="3" fill="#040405"/>
+                <circle cx="200" cy="244" r="2.2" fill="#040405"/>
+
+                <!-- screws -->
+                <g id="screws">
+                  <g transform="translate(16 16)"><circle r="6" fill="url(#chrome)" stroke="#222"/><path d="M-3.4 0H3.4M0 -3.4V3.4" stroke="#333" stroke-width="1.5"/></g>
+                  <g transform="translate(384 16)"><circle r="6" fill="url(#chrome)" stroke="#222"/><path d="M-3.4 0H3.4M0 -3.4V3.4" stroke="#333" stroke-width="1.5"/></g>
+                  <g transform="translate(16 238)"><circle r="6" fill="url(#chrome)" stroke="#222"/><path d="M-3.4 0H3.4M0 -3.4V3.4" stroke="#333" stroke-width="1.5"/></g>
+                  <g transform="translate(384 238)"><circle r="6" fill="url(#chrome)" stroke="#222"/><path d="M-3.4 0H3.4M0 -3.4V3.4" stroke="#333" stroke-width="1.5"/></g>
+                  <g transform="translate(200 11)"><circle r="4.2" fill="url(#chrome)" stroke="#222"/><path d="M-2.4 0H2.4M0 -2.4V2.4" stroke="#333" stroke-width="1.2"/></g>
+                </g>
+                <!-- moulded arrows -->
+                <path d="M300 238 l10 -4 v8 z" fill="#000" fill-opacity=".35"/><path d="M100 238 l-10 -4 v8 z" fill="#000" fill-opacity=".35"/>
+              </svg>
+            </div>
+
+            <!-- counter + VU -->
+            <div class="right">
+              <div class="plate counter">
+                <div class="row"><span class="silk">TAPE COUNTER</span><span class="silk" id="counter-hint" style="opacity:.6"></span></div>
+                <div class="drums" id="drums"></div>
+                <div class="row"><span class="silk" style="opacity:.5">0000 – 9999</span><button class="minibtn" id="btn-reset" aria-label="Reset counter">RESET</button></div>
+              </div>
+              <div class="plate vu"><svg id="vu" viewBox="0 0 150 80" width="100%" height="100%"></svg></div>
+            </div>
+          </div>
+
+          <!-- piano keys -->
+          <div class="keys">
+            <button class="key" id="k-rew" aria-label="Rewind"><svg class="ico" viewBox="0 0 24 16"><path d="M12 1.5V14.5L2.5 8zM22 1.5V14.5L12.5 8z"/></svg><span>REW</span></button>
+            <button class="key" id="k-ff" aria-label="Fast forward"><svg class="ico" viewBox="0 0 24 16"><path d="M2 1.5V14.5L11.5 8zM12 1.5V14.5L21.5 8z"/></svg><span>F.FWD</span></button>
+            <button class="key" id="k-play" aria-label="Play"><svg class="ico" viewBox="0 0 24 16"><path d="M6 1V15L19 8z"/></svg><span>PLAY</span></button>
+            <button class="key" id="k-stop" aria-label="Stop"><svg class="ico" viewBox="0 0 24 16"><rect x="6" y="2" width="12" height="12" rx="1"/></svg><span>STOP</span></button>
+            <button class="key wide" id="k-iz" aria-label="Inter-Zone">
+              <svg class="ico lock-closed" viewBox="0 0 24 16"><rect x="6.5" y="7" width="11" height="8" rx="1.3"/><path d="M9 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+              <svg class="ico lock-open" viewBox="0 0 24 16"><rect x="6.5" y="7" width="11" height="8" rx="1.3"/><path d="M9 7V5a3 3 0 0 1 5.8-1.1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+              <span>INTER-ZONE</span><small id="iz-sub">LOCKED</small>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="rotate" aria-hidden="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#cfc6b8" stroke-width="1.4" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 19h2" stroke-linecap="round"/></svg>
+  <div>ROTATE DEVICE</div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ======================================================================
+   CONFIG  —  edit this block, nothing else needs touching
+   ====================================================================== */
+const CONFIG = {
+  // Counter reading that unlocks the Inter-Zone key.
+  UNLOCK_CODE: 1877,
+
+  // Audio files. Relative paths ("audio/a.mp3") or full URLs. Leave '' to use
+  // a built-in test-tone so you can see the whole thing working.
+  //   play      -> the PLAY key           (always available)
+  //   interzone -> the INTER-ZONE key     (locked until the code is entered)
+  MESSAGES: {
+    play:      { src: '' },
+    interzone: { src: '' },
+  },
+
+  // Handwriting on the cassette label (two lines; '' = blank).
+  LABEL: ['', ''],
+
+  // Small silkscreen hint above the counter ('' to hide).
+  COUNTER_HINT: 'DRAG TO SET',
+
+  // Keep Inter-Zone unlocked after a player has found the code (this browser only).
+  PERSIST_UNLOCK: true,
+
+  TAPE_HISS: true,       // faint hiss while a message plays
+  FF_RATE: 26,           // counter units / second in fast-forward
+  REW_RATE: 34,          // counter units / second in rewind
+};
+
+/* ====================================================================== */
+
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const STORE_KEY = 'arg_cassette_iz_unlocked_v1';
+
+/* ---------- state ---------- */
+const S = {
+  mode: 'stop',          // stop | play | iz | ff | rew
+  unlocked: false,
+  pos: 0,                // float tape position
+  count: 0,              // integer shown on counter
+  tgt: [0, 0, 0, 0],     // drum targets (unwrapped integers)
+  shown: [0, 0, 0, 0],   // drum display positions (eased)
+  vis: 0,                // eased reel speed
+  angL: 0, angR: 0,
+  rL: 36, rR: 22,
+  vu: 0,
+  scale: 1, dpr: 1,
+};
+const digit = k => ((S.tgt[k] % 10) + 10) % 10;
+const readCount = () => digit(0) * 1000 + digit(1) * 100 + digit(2) * 10 + digit(3);
+function setCount(n) {
+  n = clamp(Math.round(n), 0, 9999);
+  for (let k = 0; k < 4; k++) {
+    const want = Math.floor(n / Math.pow(10, 3 - k)) % 10;
+    let d = want - digit(k);
+    if (d > 5) d -= 10; else if (d < -5) d += 10;
+    S.tgt[k] += d;
+  }
+  S.count = n;
+}
+
+/* ======================================================================
+   SOUND  (Web Audio — all mechanical sounds are synthesised, no files)
+   ====================================================================== */
+const AU = {};
+function audioInit() {
+  if (AU.ctx) { if (AU.ctx.state !== 'running') AU.ctx.resume().catch(() => {}); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}   // iOS: ignore silent switch
+  const ctx = AU.ctx = new AC();
+  ctx.resume().catch(() => {});
+  AU.out = ctx.createGain(); AU.out.gain.value = 0.9; AU.out.connect(ctx.destination);
+
+  const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  AU.noise = buf;
+  const loopNoise = () => { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.start(); return s; };
+
+  { const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 4200;
+    const g = ctx.createGain(); g.gain.value = 0; loopNoise().connect(f); f.connect(g); g.connect(AU.out); AU.hiss = g; }
+  { const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1000; f.Q.value = 0.9;
+    const g = ctx.createGain(); g.gain.value = 0; loopNoise().connect(f); f.connect(g); g.connect(AU.out); AU.whirr = g; AU.whirrF = f; }
+  { const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = 52;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 280;
+    const g = ctx.createGain(); g.gain.value = 0; o.connect(f); f.connect(g); g.connect(AU.out); o.start(); AU.motor = g; AU.motorO = o; }
+  applyTransportSound();
+}
+function tone(f0, f1, dur, vol, type = 'sine', delay = 0) {
+  if (!AU.ctx) return;
+  const c = AU.ctx, t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(AU.out); o.start(t); o.stop(t + dur + 0.02);
+}
+function click(freq, dur, vol, delay = 0) {
+  if (!AU.ctx) return;
+  const c = AU.ctx, t = c.currentTime + delay, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = AU.noise; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.2;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(AU.out); s.start(t, Math.random(), dur + 0.03);
+}
+const SFX = {
+  down()   { tone(96, 38, .14, .55); click(2400, .03, .4); click(700, .05, .3, .02); },
+  stop()   { tone(110, 40, .12, .5); click(1800, .03, .35); click(600, .06, .3, .015); },
+  up()     { tone(130, 60, .07, .22); click(3200, .02, .22); },
+  deny()   { tone(72, 40, .12, .55); tone(72, 40, .12, .45, 'sine', .15); click(900, .04, .3); },
+  tick()   { click(3800, .012, .20); },
+  end()    { tone(70, 34, .2, .55); click(1500, .04, .35); },
+  unlock() {
+    click(1800, .03, .5); tone(80, 40, .15, .5, 'sine', .03); click(2600, .03, .4, .17);
+    tone(660, 660, .30, .05, 'sine', .30); tone(990, 990, .45, .05, 'sine', .46);
+  },
+};
+function applyTransportSound() {
+  if (!AU.ctx) return;
+  const t = AU.ctx.currentTime, m = S.mode;
+  const run = m !== 'stop', wind = m === 'ff' || m === 'rew', play = m === 'play' || m === 'iz';
+  AU.motor.gain.setTargetAtTime(run ? (wind ? 0.05 : 0.03) : 0, t, 0.08);
+  AU.motorO.frequency.setTargetAtTime(wind ? 118 : 52, t, 0.35);
+  AU.hiss.gain.setTargetAtTime(play && CONFIG.TAPE_HISS ? 0.012 : 0, t, 0.1);
+  AU.whirr.gain.setTargetAtTime(wind ? 0.07 : 0, t, 0.12);
+  AU.whirrF.frequency.setTargetAtTime(m === 'rew' ? 1500 : 1100, t, 0.4);
+}
+
+/* ======================================================================
+   MESSAGES  (real audio files, or a synthesised test tone if none set)
+   ====================================================================== */
+const MSG = {};
+['play', 'iz'].forEach(which => {
+  const src = CONFIG.MESSAGES[which === 'iz' ? 'interzone' : 'play'].src;
+  const m = MSG[which] = { el: null, failed: false };
+  if (!src) return;
+  const el = m.el = new Audio();
+  el.preload = 'auto'; el.playsInline = true; el.src = src;
+  el.addEventListener('ended', () => { el.currentTime = 0; if (S.mode === which) endStop(); });
+  el.addEventListener('error', () => { m.failed = true; if (S.mode === which) startFallback(which); });
+});
+
+const FB = { which: null, active: false, t: 0, next: 0, i: 0, dur: 20 };
+const FB_NOTES = {
+  play: { n: [261.63, 329.63, 392.0, 493.88, 523.25, 659.25], gap: .4, len: 1.2, type: 'sine', vol: .12 },
+  iz:   { n: [110.0, 116.54, 164.81, 220.0, 233.08], gap: .6, len: 1.8, type: 'sawtooth', vol: .07 },
+};
+function startFallback(which) {
+  if (FB.which !== which) { FB.which = which; FB.t = 0; FB.next = 0; FB.i = 0; }
+  FB.active = true;
+}
+function fallbackTick(dt) {
+  if (!FB.active || FB.which !== S.mode) return;
+  FB.t += dt;
+  if (FB.t >= FB.next) {
+    const p = FB_NOTES[FB.which];
+    tone(p.n[FB.i++ % p.n.length], p.n[(FB.i) % p.n.length] * 0.995, p.len, p.vol, p.type);
+    FB.next += p.gap;
+  }
+  if (FB.t > FB.dur) endStop();
+}
+function startMessage(which) {
+  resetMsg(which === 'play' ? 'iz' : 'play');
+  const m = MSG[which];
+  if (m.el && !m.failed) {
+    const p = m.el.play();
+    if (p && p.catch) p.catch(err => {
+      if (err && err.name === 'AbortError') return;
+      m.failed = true; if (S.mode === which) startFallback(which);
+    });
+  } else startFallback(which);
+}
+function pauseMsg(which) { const m = MSG[which]; if (m.el) m.el.pause(); }
+function resetMsg(which) {
+  const m = MSG[which];
+  if (m.el) { m.el.pause(); try { m.el.currentTime = 0; } catch (e) {} }
+  if (FB.which === which) { FB.which = null; FB.active = false; }
+}
+
+/* ======================================================================
+   TRANSPORT
+   ====================================================================== */
+const keyEls = { rew: $('#k-rew'), ff: $('#k-ff'), play: $('#k-play'), iz: $('#k-iz'), stop: $('#k-stop') };
+const lampRun = $('#lamp-run'), lampLock = $('#lamp-lock'), grille = $('#grille');
+
+function setMode(next) {
+  const prev = S.mode;
+  if (next === prev) return;
+  if (prev === 'play' || prev === 'iz') pauseMsg(prev);
+  S.mode = next;
+  if (next !== 'stop') S.pos = S.count;
+  if (next === 'ff' || next === 'rew') { resetMsg('play'); resetMsg('iz'); S.windT = 0; }
+  if (next === 'play' || next === 'iz') startMessage(next);
+  refreshKeys();
+  applyTransportSound();
+  if (next === 'stop') checkUnlock();
+}
+function endStop() { SFX.end(); setMode('stop'); }
+
+function refreshKeys() {
+  for (const k of ['rew', 'ff', 'play', 'iz']) keyEls[k].classList.toggle('down', S.mode === k);
+  lampRun.classList.toggle('on', S.mode !== 'stop');
+  grille.classList.toggle('pulse', S.mode === 'play' || S.mode === 'iz');
+}
+
+function press(action) {
+  audioInit();
+  switch (action) {
+    case 'stop':
+      keyEls.stop.classList.add('down'); setTimeout(() => keyEls.stop.classList.remove('down'), 140);
+      if (S.mode === 'stop') { SFX.up(); break; }
+      SFX.stop(); setMode('stop'); break;
+    case 'play': if (S.mode !== 'play') { SFX.down(); setMode('play'); } break;
+    case 'rew':  if (S.mode !== 'rew')  { SFX.down(); setMode('rew');  } break;
+    case 'ff':   if (S.mode !== 'ff')   { SFX.down(); setMode('ff');   } break;
+    case 'iz':
+      if (!S.unlocked) {
+        SFX.deny();
+        keyEls.iz.classList.remove('nope'); void keyEls.iz.offsetWidth; keyEls.iz.classList.add('nope');
+        lampLock.classList.remove('blink'); void lampLock.offsetWidth; lampLock.classList.add('blink');
+        break;
+      }
+      if (S.mode !== 'iz') { SFX.down(); setMode('iz'); }
+      break;
+  }
+}
+for (const [id, a] of [['rew', 'rew'], ['ff', 'ff'], ['play', 'play'], ['stop', 'stop'], ['iz', 'iz']]) {
+  keyEls[id].addEventListener('click', () => press(a));
+}
+
+/* ---------- unlock ---------- */
+function applyUnlockedUI() {
+  keyEls.iz.classList.add('unlocked', 'glow');
+  lampLock.classList.add('open');
+  $('#iz-sub').textContent = 'READY';
+}
+function checkUnlock() {
+  if (S.unlocked || S.count !== CONFIG.UNLOCK_CODE || S.mode === 'ff' || S.mode === 'rew') return;
+  S.unlocked = true;
+  audioInit(); SFX.unlock();
+  applyUnlockedUI();
+  if (CONFIG.PERSIST_UNLOCK) { try { localStorage.setItem(STORE_KEY, '1'); } catch (e) {} }
+}
+
+/* ======================================================================
+   COUNTER DRUMS
+   ====================================================================== */
+const DRUM_W = 40, DRUM_H = 62, DRUM_R = 52, DRUM_STEP = 0.72;
+const drumsEl = $('#drums');
+const drumCtx = [];
+for (let k = 0; k < 4; k++) {
+  const d = document.createElement('div');
+  d.className = 'drum'; d.tabIndex = 0; d.setAttribute('role', 'spinbutton'); d.setAttribute('aria-label', 'Counter digit ' + (k + 1));
+  d.innerHTML = '<canvas></canvas><i class="u">▲</i><i class="d">▼</i>';
+  drumsEl.appendChild(d);
+  drumCtx.push($('canvas', d).getContext('2d'));
+  bindDrum(d, k);
+}
+function rollDrum(k, dir) {
+  S.tgt[k] += dir;
+  S.count = readCount(); S.pos = S.count;
+  audioInit(); SFX.tick();
+  checkUnlock();
+}
+function bindDrum(el, k) {
+  let drag = null;
+  el.addEventListener('pointerdown', e => {
+    audioInit();
+    el.setPointerCapture(e.pointerId);
+    drag = { y0: e.clientY, last: e.clientY, acc: 0, moved: false };
+    e.preventDefault();
+  });
+  el.addEventListener('pointermove', e => {
+    if (!drag) return;
+    drag.acc += drag.last - e.clientY; drag.last = e.clientY;
+    if (Math.abs(e.clientY - drag.y0) > 6 * S.scale) drag.moved = true;
+    const th = 15 * S.scale;
+    while (Math.abs(drag.acc) >= th) { const s = drag.acc > 0 ? 1 : -1; rollDrum(k, s); drag.acc -= s * th; }
+  });
+  const end = e => {
+    if (!drag) return;
+    if (!drag.moved && e.type === 'pointerup') {
+      const r = el.getBoundingClientRect();
+      rollDrum(k, (e.clientY - r.top) < r.height / 2 ? 1 : -1);
+    }
+    drag = null;
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('wheel', e => { e.preventDefault(); rollDrum(k, e.deltaY > 0 ? 1 : -1); }, { passive: false });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp') { e.preventDefault(); rollDrum(k, 1); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); rollDrum(k, -1); }
+  });
+}
+$('#btn-reset').addEventListener('click', () => { audioInit(); SFX.up(); setCount(0); S.pos = 0; });
+
+function drawDrum(k) {
+  const c = drumCtx[k], s = c.canvas.width / DRUM_W;
+  c.setTransform(s, 0, 0, s, 0, 0);
+  c.fillStyle = '#0a0a0b'; c.fillRect(0, 0, DRUM_W, DRUM_H);
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '700 38px "Helvetica Neue", Helvetica, Arial, sans-serif';
+  const sh = S.shown[k], base = Math.floor(sh);
+  for (let j = -2; j <= 3; j++) {
+    const n = base + j, th = (n - sh) * DRUM_STEP;
+    if (Math.abs(th) > 1.3) continue;
+    const cs = Math.cos(th);
+    c.save();
+    c.translate(DRUM_W / 2, DRUM_H / 2 + DRUM_R * Math.sin(th) + 1);
+    c.scale(1, cs);
+    c.fillStyle = `rgba(243,239,226,${(0.3 + 0.7 * cs).toFixed(3)})`;
+    c.fillText(String(((n % 10) + 10) % 10), 0, 0);
+    c.restore();
+  }
+}
+
+/* ======================================================================
+   CASSETTE
+   ====================================================================== */
+const RMIN = 21.5, RMAX = 36.5, REEL_K = 100, W_MAX = 20;
+const CL = { x: 136, y: 106 }, CR = { x: 264, y: 106 };
+function hubMarkup() {
+  let s = '<circle r="18" fill="#0c0d0f"/>';
+  for (let i = 0; i < 6; i++) s += `<rect x="-1.8" y="-16" width="3.6" height="9.5" fill="${i === 0 ? '#f0a32e' : '#ece8da'}" transform="rotate(${i * 60})"/>`;
+  s += '<circle r="16" fill="none" stroke="#ece8da" stroke-width="3"/><circle r="16" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".6"/>';
+  s += '<circle r="7.6" fill="none" stroke="#ece8da" stroke-width="2.4"/>';
+  for (let i = 0; i < 6; i++) s += `<path d="M-1.8 -7.2 L1.8 -7.2 L0 -3.4Z" fill="#ece8da" transform="rotate(${i * 60 + 30})"/>`;
+  return s;
+}
+document.querySelectorAll('#cassette .hub').forEach(g => { g.innerHTML = hubMarkup(); });
+const cs = id => document.getElementById(id);
+const el = { rotL: cs('rotL'), rotR: cs('rotR'), seamL: cs('seamL'), seamR: cs('seamR'), tapeL: cs('tapeL'), tapeR: cs('tapeR') };
+const packL = ['pL0', 'pL1', 'pL2', 'pL3'].map(cs), packR = ['pR0', 'pR1', 'pR2', 'pR3'].map(cs);
+cs('lbl1').textContent = CONFIG.LABEL[0] || '';
+cs('lbl2').textContent = CONFIG.LABEL[1] || '';
+
+function tangent(c, r, px, py, wantLeft) {
+  const dx = px - c.x, dy = py - c.y, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx), b = Math.acos(Math.min(1, r / d));
+  const p = [a + b, a - b].map(t => ({ x: c.x + r * Math.cos(t), y: c.y + r * Math.sin(t) }));
+  return (p[0].x < p[1].x) === wantLeft ? p[0] : p[1];
+}
+let lastRL = -1, lastRR = -1;
+function setPack(arr, seam, r) {
+  arr[0].setAttribute('r', r); arr[3].setAttribute('r', r);
+  arr[1].setAttribute('r', (RMIN + (r - RMIN) * 0.66).toFixed(2));
+  arr[2].setAttribute('r', (RMIN + (r - RMIN) * 0.33).toFixed(2));
+  seam.setAttribute('y2', -(r - 1.5));
+}
+function updateTapeLines() {
+  const a = tangent(CL, S.rL, 60, 210, true), b = tangent(CR, S.rR, 340, 210, false);
+  el.tapeL.setAttribute('d', `M${a.x.toFixed(1)} ${a.y.toFixed(1)} L50 214`);
+  el.tapeR.setAttribute('d', `M${b.x.toFixed(1)} ${b.y.toFixed(1)} L350 214`);
+}
+
+/* ---------- VU meter (cosmetic) ---------- */
+(function buildVU() {
+  const svg = $('#vu'), px = 75, py = 76;
+  let s = `<defs><linearGradient id="vuf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6efd9"/><stop offset="1" stop-color="#e3d8b5"/></linearGradient></defs>
+    <rect x="1" y="1" width="148" height="78" rx="5" fill="#111113"/>
+    <rect x="4" y="4" width="142" height="72" rx="3" fill="url(#vuf)"/>`;
+  for (let i = 0; i <= 10; i++) {
+    const a = (-50 + i * 10) * Math.PI / 180, r1 = 52, r2 = i % 5 === 0 ? 44 : 47, red = i >= 7;
+    s += `<line x1="${px + r1 * Math.sin(a)}" y1="${py - r1 * Math.cos(a)}" x2="${px + r2 * Math.sin(a)}" y2="${py - r2 * Math.cos(a)}" stroke="${red ? '#c0391f' : '#2a2a2e'}" stroke-width="${i % 5 === 0 ? 1.8 : 1}"/>`;
+  }
+  const arc = (a0, a1, col) => { const f = a => [px + 55 * Math.sin(a * Math.PI / 180), py - 55 * Math.cos(a * Math.PI / 180)]; const [x0, y0] = f(a0), [x1, y1] = f(a1); return `<path d="M${x0} ${y0} A55 55 0 0 1 ${x1} ${y1}" fill="none" stroke="${col}" stroke-width="2.6"/>`; };
+  s += arc(-50, 20, '#2a2a2e') + arc(20, 50, '#c0391f');
+  s += `<text x="${px}" y="34" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-weight="900" font-size="12" fill="#2a2a2e" letter-spacing="2">VU</text>
+    <text x="22" y="26" font-family="Helvetica,Arial,sans-serif" font-weight="700" font-size="6.5" fill="#2a2a2e">–</text>
+    <text x="122" y="26" font-family="Helvetica,Arial,sans-serif" font-weight="700" font-size="6.5" fill="#c0391f">+</text>
+    <g id="needle" transform="rotate(-50 ${px} ${py})"><line x1="${px}" y1="${py}" x2="${px}" y2="${py - 56}" stroke="#16161a" stroke-width="1.3" stroke-linecap="round"/></g>
+    <path d="M4 76 V66 Q${px} 54 146 66 V76 Z" fill="#111113"/>
+    <circle cx="${px}" cy="${py - 6}" r="5" fill="#2a2b30" stroke="#000"/>
+    <path d="M10 8 H62 L40 50 H10 Z" fill="#fff" opacity=".08"/>`;
+  svg.innerHTML = s;
+})();
+const needle = () => cs('needle');
+
+/* ======================================================================
+   MAIN LOOP
+   ====================================================================== */
+function tick(dt) {
+  const m = S.mode;
+  if (m === 'play' || m === 'iz') S.pos += dt;
+  else if (m === 'ff' || m === 'rew') {
+    S.windT = Math.min(1, (S.windT || 0) + dt / 0.9);
+    const rate = (m === 'ff' ? CONFIG.FF_RATE : CONFIG.REW_RATE) * (0.25 + 0.75 * S.windT);
+    S.pos += (m === 'ff' ? 1 : -1) * rate * dt;
+  }
+  if (m !== 'stop') {
+    if (S.pos >= 9999) { S.pos = 9999; setCount(9999); endStop(); }
+    else if (m === 'rew' && S.pos <= 0) { S.pos = 0; setCount(0); endStop(); }
+    else {
+      const n = m === 'rew' ? Math.ceil(S.pos) : Math.floor(S.pos);
+      if (n !== S.count) { setCount(n); if (m === 'play' || m === 'iz') checkUnlock(); }
+    }
+  }
+  fallbackTick(dt);
+}
+
+let t0 = performance.now(), clock = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - t0) / 1000); t0 = now; clock += dt;
+  tick(dt);
+
+  /* reels */
+  const m = S.mode;
+  const vt = (m === 'play' || m === 'iz') ? 1 : m === 'ff' ? 5 : m === 'rew' ? -5 : 0;
+  S.vis += (vt - S.vis) * (1 - Math.exp(-dt * (vt === 0 ? 3.2 : 5)));
+  if (vt === 0 && Math.abs(S.vis) < 0.003) S.vis = 0;
+  const p = clamp(S.count / 9999, 0, 1), A = RMAX * RMAX - RMIN * RMIN;
+  const tL = Math.sqrt(RMIN * RMIN + A * (1 - p)), tR = Math.sqrt(RMIN * RMIN + A * p);
+  S.rL += (tL - S.rL) * (1 - Math.exp(-dt * 5)); S.rR += (tR - S.rR) * (1 - Math.exp(-dt * 5));
+  if (S.vis !== 0) {
+    S.angL -= clamp(REEL_K * S.vis / S.rL, -W_MAX, W_MAX) * dt * 57.2958;
+    S.angR -= clamp(REEL_K * S.vis / S.rR, -W_MAX, W_MAX) * dt * 57.2958;
+    el.rotL.setAttribute('transform', `translate(${CL.x} ${CL.y}) rotate(${S.angL.toFixed(2)})`);
+    el.rotR.setAttribute('transform', `translate(${CR.x} ${CR.y}) rotate(${S.angR.toFixed(2)})`);
+  }
+  if (Math.abs(S.rL - lastRL) > 0.01 || Math.abs(S.rR - lastRR) > 0.01) {
+    lastRL = S.rL; lastRR = S.rR;
+    setPack(packL, el.seamL, S.rL.toFixed(2)); setPack(packR, el.seamR, S.rR.toFixed(2));
+    updateTapeLines();
+  }
+
+  /* drums */
+  for (let k = 0; k < 4; k++) {
+    const diff = S.tgt[k] - S.shown[k];
+    if (Math.abs(diff) > 0.002) { S.shown[k] += diff * (1 - Math.exp(-dt * 20)); if (Math.abs(S.tgt[k] - S.shown[k]) < 0.002) S.shown[k] = S.tgt[k]; drawDrum(k); }
+    else if (S.dirtyDrums) drawDrum(k);
+  }
+  S.dirtyDrums = false;
+
+  /* VU needle */
+  let target = 0;
+  if (m === 'play' || m === 'iz') {
+    target = 0.30 + 0.22 * Math.abs(Math.sin(clock * 7.3) * Math.sin(clock * 3.1 + 1)) + Math.random() * 0.16 + (m === 'iz' ? 0.06 : 0);
+  }
+  S.vu += (target - S.vu) * (1 - Math.exp(-dt * (target > S.vu ? 14 : 5)));
+  cs('needle').setAttribute('transform', `rotate(${(-50 + clamp(S.vu, 0, 1) * 100).toFixed(1)} 75 76)`);
+
+  requestAnimationFrame(frame);
+}
+
+/* ======================================================================
+   FIT TO SCREEN  (landscape phones; any aspect ratio)
+   ====================================================================== */
+const fitEl = $('#fit'), wrap = $('#wrap'), stage = $('#stage');
+function fit() {
+  const st = getComputedStyle(fitEl);
+  const aw = fitEl.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight) - 8;
+  const ah = fitEl.clientHeight - parseFloat(st.paddingTop) - parseFloat(st.paddingBottom) - 8;
+  const H = 400, W = clamp(Math.round(H * aw / ah), 780, 940);
+  const sc = clamp(Math.min(aw / W, ah / H), 0.2, 2.6);
+  stage.style.setProperty('--W', W + 'px');
+  stage.style.transform = `scale(${sc})`;
+  wrap.style.width = W * sc + 'px'; wrap.style.height = H * sc + 'px';
+  S.scale = sc; S.dpr = window.devicePixelRatio || 1;
+  const bw = Math.round(DRUM_W * sc * S.dpr), bh = Math.round(DRUM_H * sc * S.dpr);
+  drumCtx.forEach(c => { c.canvas.width = bw; c.canvas.height = bh; });
+  S.dirtyDrums = true;
+}
+window.addEventListener('resize', fit);
+window.addEventListener('orientationchange', () => setTimeout(fit, 150));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
+
+/* ---------- boot ---------- */
+cs('counter-hint').textContent = CONFIG.COUNTER_HINT || '';
+try { if (CONFIG.PERSIST_UNLOCK && localStorage.getItem(STORE_KEY) === '1') { S.unlocked = true; applyUnlockedUI(); } } catch (e) {}
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('dblclick', e => e.preventDefault());
+fit();
+for (let k = 0; k < 4; k++) drawDrum(k);
+refreshKeys();
+requestAnimationFrame(t => { t0 = t; requestAnimationFrame(frame); });
+
+/* tiny hook for testing from the console: __cassette.setCount(1870) */
+window.__cassette = { setCount: n => { setCount(n); S.pos = S.count; checkUnlock(); }, state: S };
+})();
+</script>
+</body>
+</html>
